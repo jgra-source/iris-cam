@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.Extensions.FileProviders;
 
 namespace WindowsWebcamReceiver
 {
@@ -41,8 +42,12 @@ namespace WindowsWebcamReceiver
         // The one size the camera advertises. Must match receiver.html.
         const int OutWidth = 1280, OutHeight = 720;
 
-        static async Task Main(string[] args)
+        static async Task<int> Main(string[] args)
         {
+            if (args.Contains("--install"))   return CameraInstaller.Install();
+            if (args.Contains("--uninstall")) return CameraInstaller.Uninstall();
+            if (args.Contains("--help") || args.Contains("-h")) { PrintUsage(); return 0; }
+
             Console.WriteLine("Starting WebRTC Signaling Server...");
 
             var localIps = GetLocalIPv4Addresses();
@@ -61,8 +66,18 @@ namespace WindowsWebcamReceiver
 
             var app = builder.Build();
 
-            app.UseDefaultFiles();
-            app.UseStaticFiles();
+            // Serve the pages from inside the executable when they are bundled
+            // there, so a single file is all anyone needs. Falls back to the
+            // wwwroot folder during development, where editing a page and
+            // reloading beats rebuilding.
+            var embedded = new ManifestEmbeddedFileProvider(typeof(Program).Assembly, "wwwroot");
+            var onDisk = Path.Combine(AppContext.BaseDirectory, "wwwroot");
+            IFileProvider pages = Directory.Exists(onDisk)
+                ? new CompositeFileProvider(new PhysicalFileProvider(onDisk), embedded)
+                : embedded;
+
+            app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = pages });
+            app.UseStaticFiles(new StaticFileOptions { FileProvider = pages });
             app.UseWebSockets();
 
             // iPhone connects here as the camera sender
@@ -153,12 +168,26 @@ namespace WindowsWebcamReceiver
                 await app.StartAsync();
                 WebViewHost.Start($"https://localhost:{Port}/receiver.html");
                 await app.WaitForShutdownAsync();
-                return;
+                return 0;
             }
 
             Console.WriteLine("Running without the background browser (--no-webview).");
             Console.WriteLine($"Open https://localhost:{Port}/receiver.html yourself to feed frames.\n");
             await app.RunAsync();
+            return 0;
+        }
+
+        static void PrintUsage()
+        {
+            Console.WriteLine();
+            Console.WriteLine("  iPhone Webcam");
+            Console.WriteLine();
+            Console.WriteLine("    iPhoneWebcam                run it, then open the printed address on your phone");
+            Console.WriteLine("    iPhoneWebcam --install      add \"iPhone Webcam\" to the Windows camera list");
+            Console.WriteLine("                                (needs administrator)");
+            Console.WriteLine("    iPhoneWebcam --uninstall    remove it again (needs administrator)");
+            Console.WriteLine("    iPhoneWebcam --no-webview   run without the built-in browser, for debugging");
+            Console.WriteLine();
         }
 
         static void PrintStartupBanner(List<IPAddress> localIps)

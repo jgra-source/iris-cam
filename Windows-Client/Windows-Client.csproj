@@ -7,16 +7,49 @@
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
     <RootNamespace>Windows_Client</RootNamespace>
+    <AssemblyName>iPhoneWebcam</AssemblyName>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <!-- PlaceholderFrame reads bitmap rows directly; far faster than GetPixel. -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <!-- Single-file publishing. WebView2 ships native code, which has to be
+         unpacked at run time rather than left inside the bundle. -->
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+
+    <!-- Lets the web pages be served from inside the executable. -->
+    <GenerateEmbeddedFilesManifest>true</GenerateEmbeddedFilesManifest>
   </PropertyGroup>
 
   <ItemGroup>
     <!-- SIPSorcery was removed: we decode WebRTC in WebView2, not in C#.
          See IMPLEMENTATION_PLAN.md section 2.1. -->
+    <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="10.0.10" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The pages travel inside the executable, so there is no wwwroot folder to
+         lose or forget to copy alongside it. -->
+    <EmbeddedResource Include="wwwroot\**\*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The camera driver and its registration tool ride along as data, and are
+         written to disk during install. They cannot simply run from inside the
+         executable: Windows loads the driver by path, into other applications'
+         processes, so it has to exist as a real file.
+
+         Both are optional at build time - without them you still get a working
+         app, just no camera install. build-release.cmd builds them first. -->
+    <EmbeddedResource Include="..\Virtual-Camera-Driver\x64\Release\VirtualCameraMediaSource.dll"
+                      Condition="Exists('..\Virtual-Camera-Driver\x64\Release\VirtualCameraMediaSource.dll')"
+                      LogicalName="Payload.VirtualCameraMediaSource.dll" />
+    <EmbeddedResource Include="..\Virtual-Camera-Driver\register-camera.exe"
+                      Condition="Exists('..\Virtual-Camera-Driver\register-camera.exe')"
+                      LogicalName="Payload.register-camera.exe" />
   </ItemGroup>
 
 </Project>

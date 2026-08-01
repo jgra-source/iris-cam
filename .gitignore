@@ -38,3 +38,8 @@ Virtual-Camera-Driver/x64/
 Virtual-Camera-Driver/*.exe
 Virtual-Camera-Driver/install-log.txt
 VirtualC.*/
+
+# Release output - the built exe goes to GitHub Releases, never into git.
+# A self-contained build is ~74MB and committed binaries bloat history forever.
+dist/
+nuget.exe
