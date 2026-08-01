@@ -62,15 +62,17 @@ step.*
 
 ### 3. Connect your phone
 
-Double-click `Iris.exe`. It starts quietly in the notification area and prints
-an address:
+Double-click `Iris.exe`. No window opens. It starts in the notification area, by
+the clock, and shows you the address your phone needs:
 
 ```
   On your iPhone (Safari, same Wi-Fi network):
       https://192.168.1.42:9443
 ```
 
-Yours will be different — it is read from your own network.
+Yours will be different — it is read from your own network. If you miss the
+notification, right-click the Iris icon by the clock; the address is on the
+menu, and clicking it copies it.
 
 Open that address **in Safari on your iPhone** and tap **Start Camera**.
 
@@ -133,7 +135,7 @@ Iris.exe --install         add "Iris Camera" to Windows
 Iris.exe --uninstall       remove it
 Iris.exe --autostart       start when signing in
 Iris.exe --autostart-off   stop doing that
-Iris.exe --console         show the console window instead of the tray icon
+Iris.exe --console         open a console and watch what it is doing
 ```
 
 ## Building it yourself

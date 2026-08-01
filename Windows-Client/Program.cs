@@ -49,6 +49,10 @@ namespace WindowsWebcamReceiver
 
         static async Task<int> Main(string[] args)
         {
+            // First, before anything prints: decide where printing goes. See
+            // ConsoleSupport.cs.
+            ConsoleSupport.Prepare(args);
+
             if (args.Contains("--install"))       return CameraInstaller.Install();
             if (args.Contains("--uninstall"))     return CameraInstaller.Uninstall();
             if (args.Contains("--autostart"))     return Autostart.Enable();
@@ -186,7 +190,6 @@ namespace WindowsWebcamReceiver
                     localIps.Select(ip => $"https://{ip}:{Port}").ToArray(),
                     onQuit: () => lifetime?.StopApplication());
                 tray.Start();
-                TrayIcon.HideConsoleIfLaunchedByDoubleClick();
             }
 
             // Start the invisible browser that actually decodes the video.

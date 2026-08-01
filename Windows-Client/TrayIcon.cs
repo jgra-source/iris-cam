@@ -89,6 +89,8 @@ namespace WindowsWebcamReceiver
                 };
                 icon.DoubleClick += (_, _) => OpenInBrowser(viewerUrl);
 
+                ShowStartupNotice();
+
                 // Reflect connection state in the icon, so a glance tells you
                 // whether the phone is actually feeding it.
                 refresh = new System.Windows.Forms.Timer { Interval = 1000 };
@@ -101,6 +103,30 @@ namespace WindowsWebcamReceiver
             {
                 Console.WriteLine($"[tray] could not start: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// Announces the address the phone needs.
+        ///
+        /// Double-clicked, the program has no console, so the address it used to
+        /// print has nowhere to go. Without this there is nothing on screen at
+        /// all: no window, and an icon most people have to be told to look for.
+        /// The address is on the menu too, but only once you know to right-click.
+        /// </summary>
+        void ShowStartupNotice()
+        {
+            if (icon == null) return;
+            try
+            {
+                var address = phoneUrls.Length > 0 ? phoneUrls[0] : viewerUrl;
+                icon.BalloonTipTitle = "Iris is running";
+                icon.BalloonTipText =
+                    $"On your iPhone, open Safari and go to:\n{address}\n\n" +
+                    "Right-click the Iris icon by the clock to copy this address.";
+                icon.BalloonTipIcon = ToolTipIcon.Info;
+                icon.ShowBalloonTip(15000);
+            }
+            catch (Exception ex) { Console.WriteLine($"[tray] could not show the address: {ex.Message}"); }
         }
 
         void UpdateState()
@@ -162,33 +188,5 @@ namespace WindowsWebcamReceiver
             if (icon != null) { icon.Visible = false; icon.Dispose(); }
         }
 
-        // ---- hiding the console window -------------------------------------
-
-        [DllImport("kernel32.dll")] static extern IntPtr GetConsoleWindow();
-        [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
-        [DllImport("kernel32.dll")] static extern uint GetConsoleProcessList(uint[] processList, uint count);
-
-        /// <summary>
-        /// Hides the console window when the program was double-clicked, and
-        /// leaves it alone when it was started from a terminal - where hiding it
-        /// would take the user's own window with it, and where they are probably
-        /// watching the output on purpose.
-        /// </summary>
-        public static void HideConsoleIfLaunchedByDoubleClick()
-        {
-            try
-            {
-                var handle = GetConsoleWindow();
-                if (handle == IntPtr.Zero) return;
-
-                // A console created just for us has exactly one process attached:
-                // this one. Started from an existing terminal, there are more.
-                var buffer = new uint[4];
-                if (GetConsoleProcessList(buffer, (uint)buffer.Length) > 1) return;
-
-                ShowWindow(handle, 0);   // SW_HIDE
-            }
-            catch { /* leave the window alone if anything is unexpected */ }
-        }
     }
 }

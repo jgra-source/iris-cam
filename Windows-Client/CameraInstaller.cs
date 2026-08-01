@@ -190,6 +190,11 @@ namespace WindowsWebcamReceiver
                 };
                 using var p = Process.Start(psi);
                 p!.WaitForExit();
+
+                // The elevated run is a separate process with no console of its
+                // own, so everything it printed went nowhere. Report how it went,
+                // or approving the permission prompt looks like it did nothing.
+                ReportOutcome(arg, p.ExitCode);
                 return p.ExitCode;
             }
             catch (System.ComponentModel.Win32Exception)
@@ -197,6 +202,30 @@ namespace WindowsWebcamReceiver
                 // Raised when the prompt is dismissed.
                 Console.WriteLine("Cancelled - nothing was changed.");
                 return 1;
+            }
+        }
+
+        static void ReportOutcome(string arg, int exitCode)
+        {
+            if (exitCode != 0)
+            {
+                Console.WriteLine();
+                Console.WriteLine($"That did not work (exit code {exitCode}).");
+                Console.WriteLine("To see why, open a terminal as administrator and run it there,");
+                Console.WriteLine($"where the messages stay on screen: Iris.exe {arg}");
+                return;
+            }
+
+            Console.WriteLine();
+            if (arg == "--install")
+            {
+                Console.WriteLine("Done. \"Iris Camera\" is now in the camera list of Teams,");
+                Console.WriteLine("Zoom, Google Meet and Discord.");
+                Console.WriteLine("Run this program normally (no --install) to feed it your phone.");
+            }
+            else
+            {
+                Console.WriteLine("\"Iris Camera\" removed.");
             }
         }
 

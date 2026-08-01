@@ -1,7 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
+    <!-- WinExe, not Exe: Windows makes no console for a windowed program, so
+         there is no console window to appear and none to hide. See
+         ConsoleSupport.cs - hiding one stopped working on Windows 11. -->
+    <OutputType>WinExe</OutputType>
     <!-- net8.0-windows + WinForms only because WebView2 needs a window to live
          in. No UI is ever shown to the user; see WebViewHost.cs. -->
     <TargetFramework>net8.0-windows</TargetFramework>
