@@ -149,6 +149,10 @@ build-release.cmd
 That produces `dist\Iris.exe`. To run the app alone without building the
 driver: `cd Windows-Client && dotnet run`.
 
+To run the tests: `dotnet test Tests`. They need only the .NET SDK — no camera
+install, no C++ build, and nothing touches the live
+`C:\ProgramData\Iris\frames.bin`.
+
 ## The security warning is expected
 
 Both browsers will warn that the connection is not private, and Safari will say something like *"This Connection Is Not Private"*.
@@ -247,6 +251,7 @@ so both sides can simply open it.
 | `Windows-Client/` | The desktop app: serves the pages, runs the invisible browser, publishes frames |
 | `Windows-Client/wwwroot/` | `index.html` (phone), `viewer.html` (watch on PC), `receiver.html` (invisible), `camera-check.html` (lists cameras) |
 | `Virtual-Camera-Driver/` | The camera driver and its installer. Derived from Microsoft's sample — see `THIRD-PARTY-NOTICES.md` |
+| `Tests/` | Checks on the frame handling, including that the C# and the C++ still agree on the shared layout |
 
 ## Licence
 

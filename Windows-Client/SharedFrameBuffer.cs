@@ -114,7 +114,13 @@ namespace WindowsWebcamReceiver
             // Fill the spare slot first, with no "busy" flag raised. Readers are
             // looking at the other slot, so this is safe however long it takes -
             // and it does take a while, since it is several megabytes per frame.
-            var buffer = rentBuffer ??= new byte[slotSize];
+            // The scratch buffer belongs to the thread, not to this instance, so a
+            // second buffer at a different size can inherit one that is too small.
+            // Checking the length rather than just "is it there?" is what stops
+            // that walking off the end of the array.
+            if (rentBuffer is null || rentBuffer.Length < slotSize)
+                rentBuffer = new byte[slotSize];
+            var buffer = rentBuffer;
             for (var i = 0; i < slotSize; i += 4)
             {
                 buffer[i + 0] = rgba[i + 2]; // B
