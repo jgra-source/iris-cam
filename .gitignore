@@ -43,3 +43,7 @@ VirtualC.*/
 # A self-contained build is ~74MB and committed binaries bloat history forever.
 dist/
 nuget.exe
+
+# Working notes, kept local on purpose - not part of what this project ships.
+IMPLEMENTATION_PLAN.md
+CONTINUE-HERE.md

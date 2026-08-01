@@ -224,7 +224,6 @@ so both sides can simply open it.
 | `Windows-Client/` | The desktop app: serves the pages, runs the invisible browser, publishes frames |
 | `Windows-Client/wwwroot/` | `index.html` (phone), `viewer.html` (watch on PC), `receiver.html` (invisible), `camera-check.html` (lists cameras) |
 | `Virtual-Camera-Driver/` | The camera driver and its installer. Derived from Microsoft's sample — see `THIRD-PARTY-NOTICES.md` |
-| `iOS-Broadcaster/` | Abandoned native Swift approach, kept for reference. Needs a Mac; not used. |
 
 ## Licence
 
@@ -253,5 +252,5 @@ Nothing. Every piece of this is free, and there is no paid service, subscription
 
 ## Status
 
-See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the full build history,
-including what was tried, what failed, and why each decision was made.
+Working and in use. Built and verified against Chrome, Google Meet and Microsoft
+Teams on Windows 11.
