@@ -18,10 +18,9 @@ using nothing but Safari — there is no app to install on the phone.
   camera list as **iPhone Webcam**, exactly like a USB webcam. This needs a
   one-time install, run as administrator.
 
-The second is an *addition*, not an alternative. The program is what receives
-your phone's video, so it has to be running either way — including while you are
-in a call. When it is not running, the camera shows a "Waiting for iPhone"
-picture rather than freezing.
+The program is what receives your phone's video, so it has to be running either
+way — including while you are in a call. When it is not running, the camera shows
+a "Waiting for iPhone" picture rather than freezing.
 
 **Windows only.** The program uses Windows components for the camera and the
 built-in browser. The only thing that works on any device is the phone side:
