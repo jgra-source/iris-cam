@@ -6,21 +6,26 @@ No Mac needed. No App Store. No account. Free.
 
 ## What it does
 
-Your iPhone becomes a camera that Windows knows about. Open **Teams**, **Zoom**,
-**Google Meet** or **Discord**, look in the camera list, and pick **iPhone Webcam** —
-exactly as you would pick a USB webcam.
+Your iPhone becomes a camera on your Windows PC.
 
-You can also just watch the picture on your PC in a browser, without installing
-the camera at all.
+You run one program on the PC. Your phone sends its camera to it over Wi-Fi,
+using nothing but Safari — there is no app to install on the phone.
 
-### Two parts, and you may only want the first
+**What you do with that picture is up to you:**
 
-| | What you get | Install needed |
-|---|---|---|
-| **The app** | iPhone video on your PC screen, in a browser | None beyond running it |
-| **The camera** | "iPhone Webcam" in Teams, Zoom, Meet, Discord | One-time, needs administrator |
+- **Watch it in a browser on your PC.** Works as soon as the program is running.
+- **Use it in Teams, Zoom, Google Meet or Discord**, where it appears in the
+  camera list as **iPhone Webcam**, exactly like a USB webcam. This needs a
+  one-time install, run as administrator.
 
-The camera part is Windows-only. The app part works anywhere.
+The second is an *addition*, not an alternative. The program is what receives
+your phone's video, so it has to be running either way — including while you are
+in a call. When it is not running, the camera shows a "Waiting for iPhone"
+picture rather than freezing.
+
+**Windows only.** The program uses Windows components for the camera and the
+built-in browser. The only thing that works on any device is the phone side:
+any iPhone with Safari, nothing installed.
 
 ## Getting it
 
