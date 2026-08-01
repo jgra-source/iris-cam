@@ -129,7 +129,7 @@ awake with the page in front. Reopening it reconnects.
 
 **"iPhone Webcam" shows moving colour bands instead of my camera.**
 The driver cannot read the app's frames. Check the app is running, and that
-`C:\ProgramData\iPhoneWebcamrames.bin` exists.
+`C:\ProgramData\iPhoneWebcam\frames.bin` exists.
 
 **"iPhone Webcam" is missing from an app's camera list.**
 Some apps only look for cameras at startup. Close it fully and reopen.
@@ -143,7 +143,7 @@ iPhone Safari
 Invisible browser inside the app   ← decodes the video
      │  raw pixels, letterboxed to a fixed 1280x720
      ▼
-C:\ProgramData\iPhoneWebcamrames.bin   ← a file both sides can reach
+C:\ProgramData\iPhoneWebcam\frames.bin   ← a file both sides can reach
      │
      ▼
 Camera driver, loaded by Windows inside Teams / Chrome / Zoom
