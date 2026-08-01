@@ -202,16 +202,15 @@ namespace WindowsWebcamReceiver
         static void PrintUsage()
         {
             Console.WriteLine();
-            Console.WriteLine("  Iris Camera");
+            Console.WriteLine("  Iris - your iPhone as a webcam on Windows");
             Console.WriteLine();
-            Console.WriteLine("    Iris                run it, then open the printed address on your phone");
-            Console.WriteLine("    Iris --install      add \"Iris Camera\" to the Windows camera list");
-            Console.WriteLine("                                (needs administrator)");
-            Console.WriteLine("    Iris --uninstall    remove it again (needs administrator)");
-            Console.WriteLine("    Iris --autostart    start automatically when you sign in");
-            Console.WriteLine("    Iris --autostart-off  stop doing that");
-            Console.WriteLine("    Iris --console      keep the console window open instead of the tray icon");
-            Console.WriteLine("    Iris --no-webview   run without the built-in browser, for debugging");
+            Console.WriteLine("    Iris                   run it, then open the printed address on your phone");
+            Console.WriteLine("    Iris --install         add \"Iris Camera\" to the Windows camera list (administrator)");
+            Console.WriteLine("    Iris --uninstall       remove it again (administrator)");
+            Console.WriteLine("    Iris --autostart       start automatically when you sign in");
+            Console.WriteLine("    Iris --autostart-off   stop doing that");
+            Console.WriteLine("    Iris --console         keep the console window instead of the tray icon");
+            Console.WriteLine("    Iris --no-webview      run without the built-in browser, for debugging");
             Console.WriteLine();
         }
 
