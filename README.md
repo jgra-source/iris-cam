@@ -26,92 +26,115 @@ a "Waiting for iPhone" picture rather than freezing.
 built-in browser. The only thing that works on any device is the phone side:
 any iPhone with Safari, nothing installed.
 
-## Getting it
+## Setup
 
-Download **Iris.exe** from
-[Releases](https://github.com/jgra-source/iphone-webcam/releases). One file,
-nothing to unzip, no runtime to install first.
+Five minutes, once.
 
-You need a Windows PC and an iPhone **on the same Wi-Fi network**, and iOS 14.3
-or newer (any iPhone from the last several years).
+### 1. Download it
 
-Windows will warn that the publisher is unknown, because the file is not
-code-signed. Choose **More info** then **Run anyway**, or build it yourself from
-source if you would rather not take that on trust.
+Get **Iris.exe** from [Releases](https://github.com/jgra-source/iris-cam/releases).
+One file. Nothing to unzip, no runtime to install first.
 
-## Using it
+**Put it somewhere permanent** — `C:\Tools\Iris.exe` or similar, not Downloads.
+Step 5 remembers where it is, and moving the file later quietly breaks it.
 
-Run `Iris.exe`. It prints the addresses to use:
+### 2. Add the camera to Windows
 
-```
-  On your PC browser (viewer):
-      https://localhost:9443/viewer.html
+Open the folder where you put it. Click in the **address bar** at the top, type
+`cmd`, and press Enter — that opens a terminal already in that folder, with no
+typing of paths.
 
-  On your iPhone (Safari, same Wi-Fi network):
-      https://192.168.1.42:9443
-```
-
-The iPhone address is detected from your network, so it will not match the
-example above.
-
-1. **On your iPhone**, open that address **in Safari**.
-2. Tap **Start Camera** and allow camera access.
-3. To watch on your PC, open the viewer address in Chrome or Edge.
-
-The order does not matter — whichever connects second is told about the first.
-
-### It lives in the notification area
-
-There is no window to keep on screen. The program sits by the clock as a small
-camera icon: **grey** when it is waiting, **green** when your phone is sending.
-
-Windows hides new icons to begin with, so click the **^** on your taskbar to find
-it. Drag it out onto the taskbar to keep it in view.
-
-Right-click it for: the phone address (click to copy), **Watch on this PC**,
-**Start when I sign in**, and **Quit**. Quit stops the camera — that is the only
-way it should ever stop.
-
-Run with `--console` if you would rather have the old console window and watch
-what it is doing.
-
-## Adding the camera to Teams, Zoom and Meet
-
-Only needed if you want **Iris Camera** in those apps' camera lists. Skip it if
-watching in a browser is enough.
-
-Right-click `Iris.exe`, **Run as administrator**, then:
+Then run:
 
 ```
 Iris.exe --install
 ```
 
-Administrator rights are required because adding a camera to Windows is a
-system-wide change. To remove it later: `Iris.exe --uninstall`.
+Two prompts to expect, both normal:
 
-## After a restart
+- **"Windows protected your PC"** — the file is not code-signed. Click
+  **More info** → **Run anyway**.
+- **A permission prompt** — adding a camera changes the whole system, so it
+  needs administrator rights. Iris asks for them itself; just approve it.
 
-The camera stays installed permanently — you never need to install it twice.
-**The program does not restart itself**, though, and that fails in a confusing
-way: the camera still appears in Teams and still shows a picture, just the
-"Waiting for iPhone" one, forever, because nothing is feeding it.
+*Only watching on your PC and not using Teams or Zoom? You can skip this whole
+step.*
 
-So either run `Iris.exe` again after each restart, or tick **Start when I
-sign in** in the tray icon's menu — same as running:
+### 3. Connect your phone
+
+Double-click `Iris.exe`. It starts quietly in the notification area and prints
+an address:
 
 ```
-Iris.exe --autostart
+  On your iPhone (Safari, same Wi-Fi network):
+      https://192.168.1.42:9443
 ```
 
-No administrator needed. Turn it off from the same menu, with `--autostart-off`,
-or from the **Startup** tab in Task Manager like any other program.
+Yours will be different — it is read from your own network.
 
-Put the file somewhere permanent before setting this. It records where the
-program currently is, so moving or renaming it afterwards quietly stops it
-working.
+Open that address **in Safari on your iPhone** and tap **Start Camera**.
 
-Either way, **leave it running while you are on a call** — it is what receives
-your phone's video.
+Safari will warn *"This Connection Is Not Private"*. **That is expected**, and
+[here is why](#the-security-warning-is-expected). Tap **Show Details** → **visit
+this website**.
+
+### 4. Pick it in your video app
+
+In Teams, Zoom, Google Meet or Discord, choose **Iris Camera** from the camera
+list — the same place you would pick a USB webcam.
+
+### 5. Make it survive a restart
+
+Right-click the Iris icon by your clock and tick **Start when I sign in**.
+
+Without this you have to start Iris by hand after every reboot — and forgetting
+is confusing, because the camera still appears in Teams and still shows a
+picture, just a "Waiting for iPhone" one, forever.
+
+---
+
+**Requirements:** a Windows PC and an iPhone **on the same Wi-Fi network**, and
+iOS 14.3 or newer (any iPhone from the last several years).
+
+**Leave Iris running while you use the camera.** It is what receives your phone's
+video. Closing it stops the camera.
+
+## Day to day
+
+**It lives by the clock**, not in a window. A small camera icon: **grey** while
+waiting, **green** once your phone is sending.
+
+Windows hides new icons at first, so click the **^** on your taskbar to find it.
+Drag it out onto the taskbar to keep it in view.
+
+Right-click it for the phone address (click to copy), **Watch on this PC**,
+**Start when I sign in**, and **Quit**.
+
+**Each time you want to use it:** open the address in Safari and tap Start
+Camera. Iris itself keeps running in the background.
+
+**Hold the phone sideways** — landscape fills the whole frame. Upright leaves
+black bars down both sides.
+
+## Removing it
+
+```
+Iris.exe --uninstall
+```
+
+Approve the permission prompt. That takes the camera out of Windows and deletes
+what was installed. Then delete `Iris.exe` itself.
+
+## Commands
+
+```
+Iris.exe                   run it
+Iris.exe --install         add "Iris Camera" to Windows
+Iris.exe --uninstall       remove it
+Iris.exe --autostart       start when signing in
+Iris.exe --autostart-off   stop doing that
+Iris.exe --console         show the console window instead of the tray icon
+```
 
 ## Building it yourself
 

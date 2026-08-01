@@ -28,12 +28,10 @@ namespace WindowsWebcamReceiver
 
         public static int Install()
         {
-            if (!IsElevated())
-            {
-                Console.WriteLine("Adding a camera to Windows needs administrator rights.");
-                Console.WriteLine("Right-click this program and choose 'Run as administrator', then try again.");
-                return 1;
-            }
+            // Ask for administrator rights ourselves rather than telling people to
+            // arrange them. Right-clicking "Run as administrator" gives no way to
+            // pass --install, so the obvious manual route does not even work.
+            if (!IsElevated()) return RelaunchElevated("--install");
 
             try
             {
@@ -84,11 +82,7 @@ namespace WindowsWebcamReceiver
 
         public static int Uninstall()
         {
-            if (!IsElevated())
-            {
-                Console.WriteLine("Removing the camera needs administrator rights.");
-                return 1;
-            }
+            if (!IsElevated()) return RelaunchElevated("--uninstall");
 
             try
             {
@@ -166,6 +160,44 @@ namespace WindowsWebcamReceiver
             using var p = Process.Start(psi);
             p!.WaitForExit();
             return p.ExitCode;
+        }
+
+        /// <summary>
+        /// Restarts this program with administrator rights, which shows the
+        /// standard Windows permission prompt. Returns whatever the elevated
+        /// run returned, so scripts still see a sensible exit code.
+        /// </summary>
+        static int RelaunchElevated(string arg)
+        {
+            var exe = Process.GetCurrentProcess().MainModule?.FileName;
+            if (exe == null)
+            {
+                Console.WriteLine("Could not work out where this program lives, so it cannot ask");
+                Console.WriteLine("for administrator rights. Run it from a terminal opened as");
+                Console.WriteLine($"administrator: Iris.exe {arg}");
+                return 1;
+            }
+
+            Console.WriteLine("Adding a camera to Windows needs administrator rights.");
+            Console.WriteLine("Approve the permission prompt to continue.");
+
+            try
+            {
+                var psi = new ProcessStartInfo(exe, arg)
+                {
+                    UseShellExecute = true,   // required for the runas verb
+                    Verb = "runas"
+                };
+                using var p = Process.Start(psi);
+                p!.WaitForExit();
+                return p.ExitCode;
+            }
+            catch (System.ComponentModel.Win32Exception)
+            {
+                // Raised when the prompt is dismissed.
+                Console.WriteLine("Cancelled - nothing was changed.");
+                return 1;
+            }
         }
 
         static bool IsElevated()
