@@ -23,7 +23,7 @@ namespace WindowsWebcamReceiver
     class Program
     {
         const int Port = 9443;
-        const string CertFileName = "iphone-webcam.pfx";
+        const string CertFileName = "iris.pfx";
 
         // Simple signaling relay: one sender (iPhone), one viewer (PC browser)
         static WebSocket? senderSocket;
