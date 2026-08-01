@@ -60,6 +60,21 @@ example above.
 
 The order does not matter — whichever connects second is told about the first.
 
+### It lives in the notification area
+
+There is no window to keep on screen. The program sits by the clock as a small
+camera icon: **grey** when it is waiting, **green** when your phone is sending.
+
+Windows hides new icons to begin with, so click the **^** on your taskbar to find
+it. Drag it out onto the taskbar to keep it in view.
+
+Right-click it for: the phone address (click to copy), **Watch on this PC**,
+**Start when I sign in**, and **Quit**. Quit stops the camera — that is the only
+way it should ever stop.
+
+Run with `--console` if you would rather have the old console window and watch
+what it is doing.
+
 ## Adding the camera to Teams, Zoom and Meet
 
 Only needed if you want **iPhone Webcam** in those apps' camera lists. Skip it if
@@ -81,18 +96,22 @@ The camera stays installed permanently — you never need to install it twice.
 way: the camera still appears in Teams and still shows a picture, just the
 "Waiting for iPhone" one, forever, because nothing is feeding it.
 
-So either run `iPhoneWebcam.exe` again after each restart, or set it once:
+So either run `iPhoneWebcam.exe` again after each restart, or tick **Start when I
+sign in** in the tray icon's menu — same as running:
 
 ```
 iPhoneWebcam.exe --autostart
 ```
 
-That makes it start when you sign in. No administrator needed. Turn it off with
-`--autostart-off`, or from the **Startup** tab in Task Manager like any other
-program.
+No administrator needed. Turn it off from the same menu, with `--autostart-off`,
+or from the **Startup** tab in Task Manager like any other program.
 
-Either way, **keep the program running while you are on a call** — it is what
-receives your phone's video. Closing its window stops the camera.
+Put the file somewhere permanent before setting this. It records where the
+program currently is, so moving or renaming it afterwards quietly stops it
+working.
+
+Either way, **leave it running while you are on a call** — it is what receives
+your phone's video.
 
 ## Building it yourself
 

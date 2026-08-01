@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Hosting;
 
 namespace WindowsWebcamReceiver
 {
@@ -38,6 +39,10 @@ namespace WindowsWebcamReceiver
 
         // Feeds the shared buffer the virtual camera reads from.
         static FramePublisher? publisher;
+
+        // Notification-area icon, and the handle used to shut down from it.
+        static TrayIcon? tray;
+        static IHostApplicationLifetime? lifetime;
 
         // The one size the camera advertises. Must match receiver.html.
         const int OutWidth = 1280, OutHeight = 720;
@@ -67,6 +72,7 @@ namespace WindowsWebcamReceiver
             });
 
             var app = builder.Build();
+            lifetime = app.Lifetime;
 
             // Serve the pages from inside the executable when they are bundled
             // there, so a single file is all anyone needs. Falls back to the
@@ -162,6 +168,20 @@ namespace WindowsWebcamReceiver
 
             PrintStartupBanner(localIps);
 
+            // Live in the notification area rather than behind a console window
+            // nobody wants on screen. --console keeps the window, for when you
+            // want to watch what it is doing.
+            if (!args.Contains("--console"))
+            {
+                tray = new TrayIcon(
+                    frames,
+                    $"https://localhost:{Port}/viewer.html",
+                    localIps.Select(ip => $"https://{ip}:{Port}").ToArray(),
+                    onQuit: () => lifetime?.StopApplication());
+                tray.Start();
+                TrayIcon.HideConsoleIfLaunchedByDoubleClick();
+            }
+
             // Start the invisible browser that actually decodes the video.
             // --no-webview skips it, for when you'd rather drive receiver.html
             // in a real browser window and watch what it's doing.
@@ -190,6 +210,7 @@ namespace WindowsWebcamReceiver
             Console.WriteLine("    iPhoneWebcam --uninstall    remove it again (needs administrator)");
             Console.WriteLine("    iPhoneWebcam --autostart    start automatically when you sign in");
             Console.WriteLine("    iPhoneWebcam --autostart-off  stop doing that");
+            Console.WriteLine("    iPhoneWebcam --console      keep the console window open instead of the tray icon");
             Console.WriteLine("    iPhoneWebcam --no-webview   run without the built-in browser, for debugging");
             Console.WriteLine();
         }
