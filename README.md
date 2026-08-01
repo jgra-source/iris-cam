@@ -1,4 +1,4 @@
-# iPhone Webcam
+# Iris
 
 Use your iPhone as a high-quality camera on your PC, over Wi-Fi, with no app to install on the phone.
 
@@ -15,7 +15,7 @@ using nothing but Safari — there is no app to install on the phone.
 
 - **Watch it in a browser on your PC.** Works as soon as the program is running.
 - **Use it in Teams, Zoom, Google Meet or Discord**, where it appears in the
-  camera list as **iPhone Webcam**, exactly like a USB webcam. This needs a
+  camera list as **Iris Camera**, exactly like a USB webcam. This needs a
   one-time install, run as administrator.
 
 The program is what receives your phone's video, so it has to be running either
@@ -28,7 +28,7 @@ any iPhone with Safari, nothing installed.
 
 ## Getting it
 
-Download **iPhoneWebcam.exe** from
+Download **Iris.exe** from
 [Releases](https://github.com/jgra-source/iphone-webcam/releases). One file,
 nothing to unzip, no runtime to install first.
 
@@ -41,7 +41,7 @@ source if you would rather not take that on trust.
 
 ## Using it
 
-Run `iPhoneWebcam.exe`. It prints the addresses to use:
+Run `Iris.exe`. It prints the addresses to use:
 
 ```
   On your PC browser (viewer):
@@ -77,17 +77,17 @@ what it is doing.
 
 ## Adding the camera to Teams, Zoom and Meet
 
-Only needed if you want **iPhone Webcam** in those apps' camera lists. Skip it if
+Only needed if you want **Iris Camera** in those apps' camera lists. Skip it if
 watching in a browser is enough.
 
-Right-click `iPhoneWebcam.exe`, **Run as administrator**, then:
+Right-click `Iris.exe`, **Run as administrator**, then:
 
 ```
-iPhoneWebcam.exe --install
+Iris.exe --install
 ```
 
 Administrator rights are required because adding a camera to Windows is a
-system-wide change. To remove it later: `iPhoneWebcam.exe --uninstall`.
+system-wide change. To remove it later: `Iris.exe --uninstall`.
 
 ## After a restart
 
@@ -96,11 +96,11 @@ The camera stays installed permanently — you never need to install it twice.
 way: the camera still appears in Teams and still shows a picture, just the
 "Waiting for iPhone" one, forever, because nothing is feeding it.
 
-So either run `iPhoneWebcam.exe` again after each restart, or tick **Start when I
+So either run `Iris.exe` again after each restart, or tick **Start when I
 sign in** in the tray icon's menu — same as running:
 
 ```
-iPhoneWebcam.exe --autostart
+Iris.exe --autostart
 ```
 
 No administrator needed. Turn it off from the same menu, with `--autostart-off`,
@@ -123,7 +123,7 @@ Windows 11 SDK 10.0.26100. Both free.
 build-release.cmd
 ```
 
-That produces `dist\iPhoneWebcam.exe`. To run the app alone without building the
+That produces `dist\Iris.exe`. To run the app alone without building the
 driver: `cd Windows-Client && dotnet run`.
 
 ## The security warning is expected
@@ -176,11 +176,11 @@ Reload the viewer page. If it persists, open the browser console (F12) and check
 iOS shuts the camera off when the phone locks or you switch apps. Keep the phone
 awake with the page in front. Reopening it reconnects.
 
-**"iPhone Webcam" shows moving colour bands instead of my camera.**
+**"Iris Camera" shows moving colour bands instead of my camera.**
 The driver cannot read the app's frames. Check the app is running, and that
-`C:\ProgramData\iPhoneWebcam\frames.bin` exists.
+`C:\ProgramData\Iris\frames.bin` exists.
 
-**"iPhone Webcam" is missing from an app's camera list.**
+**"Iris Camera" is missing from an app's camera list.**
 Some apps only look for cameras at startup. Close it fully and reopen.
 
 ## How it works
@@ -192,13 +192,13 @@ iPhone Safari
 Invisible browser inside the app   ← decodes the video
      │  raw pixels, letterboxed to a fixed 1280x720
      ▼
-C:\ProgramData\iPhoneWebcam\frames.bin   ← a file both sides can reach
+C:\ProgramData\Iris\frames.bin   ← a file both sides can reach
      │
      ▼
 Camera driver, loaded by Windows inside Teams / Chrome / Zoom
      │
      ▼
-"iPhone Webcam" in the camera list
+"Iris Camera" in the camera list
 ```
 
 A few decisions worth knowing, because they are not obvious:

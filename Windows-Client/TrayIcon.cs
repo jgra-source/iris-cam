@@ -51,7 +51,7 @@ namespace WindowsWebcamReceiver
             {
                 var menu = new ContextMenuStrip();
 
-                menu.Items.Add(new ToolStripLabel("iPhone Webcam") { Font = new Font(SystemFonts.MenuFont!, FontStyle.Bold) });
+                menu.Items.Add(new ToolStripLabel("Iris Camera") { Font = new Font(SystemFonts.MenuFont!, FontStyle.Bold) });
                 menu.Items.Add(new ToolStripSeparator());
 
                 foreach (var url in phoneUrls)
@@ -83,7 +83,7 @@ namespace WindowsWebcamReceiver
                 icon = new NotifyIcon
                 {
                     Icon = MakeIcon(false),
-                    Text = "iPhone Webcam - waiting for phone",
+                    Text = "Iris Camera - waiting for phone",
                     ContextMenuStrip = menu,
                     Visible = true
                 };
@@ -112,7 +112,7 @@ namespace WindowsWebcamReceiver
             lastLive = live;
             var old = icon.Icon;
             icon.Icon = MakeIcon(live);
-            icon.Text = live ? "iPhone Webcam - phone connected" : "iPhone Webcam - waiting for phone";
+            icon.Text = live ? "Iris Camera - phone connected" : "Iris Camera - waiting for phone";
             old?.Dispose();
         }
 

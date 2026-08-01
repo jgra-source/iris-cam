@@ -9,7 +9,7 @@ repository, used under the MIT licence reproduced below.
 ### What we changed
 
 - Replaced the source of video. The sample generates a synthetic pattern; this
-  version reads frames published by the iPhone Webcam desktop app through
+  version reads frames published by the Iris Camera desktop app through
   shared memory (`SharedFrameReader.h`), and falls back to the sample's pattern
   whenever no frame is available.
 - Changed the advertised resolution from 640×480 to 1280×720 to match the

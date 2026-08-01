@@ -7,7 +7,7 @@
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
     <RootNamespace>Windows_Client</RootNamespace>
-    <AssemblyName>iPhoneWebcam</AssemblyName>
+    <AssemblyName>Iris</AssemblyName>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <!-- PlaceholderFrame reads bitmap rows directly; far faster than GetPixel. -->

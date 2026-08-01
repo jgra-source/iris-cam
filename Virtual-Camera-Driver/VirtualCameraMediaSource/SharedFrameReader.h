@@ -1,5 +1,5 @@
 //
-// Reads frames published by the iPhone Webcam desktop app.
+// Reads frames published by the Iris Camera desktop app.
 //
 // This file runs INSIDE other programs - Teams, Chrome, Zoom - because that is
 // where Windows loads a camera. If it misbehaves it takes their process with
@@ -102,7 +102,7 @@ private:
         // program are simply not visible. A path belongs to no session.
         // Sharing is permissive because the app keeps writing while we read.
         m_file = CreateFileW(
-            L"C:\\ProgramData\\iPhoneWebcam\\frames.bin",
+            L"C:\\ProgramData\\Iris\\frames.bin",
             GENERIC_READ,
             FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
             nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);

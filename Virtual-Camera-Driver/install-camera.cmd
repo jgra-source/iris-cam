@@ -1,6 +1,6 @@
 @echo off
 REM ---------------------------------------------------------------------------
-REM Installs the iPhone Webcam camera device. Run as Administrator.
+REM Installs the Iris camera device. Run as Administrator.
 REM
 REM Three steps, each needed for a reason we learned the hard way:
 REM
@@ -15,7 +15,7 @@ REM To remove it again: uninstall-camera.cmd
 REM ---------------------------------------------------------------------------
 
 set CLSID={AD12AC5D-5241-4FF1-92AC-B45CAF2ABA15}
-set DEST=C:\Program Files\iPhoneWebcam
+set DEST=C:\Program Files\Iris
 set LOG=%~dp0install-log.txt
 
 echo === install started %DATE% %TIME% > "%LOG%"
@@ -44,6 +44,6 @@ if errorlevel 1 (
 )
 
 echo.
-echo Done. "iPhone Webcam" should now appear in the camera list of Teams,
+echo Done. "Iris Camera" should now appear in the camera list of Teams,
 echo Zoom, Meet and Discord. Start the desktop app to feed it video.
 echo.

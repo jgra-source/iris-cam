@@ -202,16 +202,16 @@ namespace WindowsWebcamReceiver
         static void PrintUsage()
         {
             Console.WriteLine();
-            Console.WriteLine("  iPhone Webcam");
+            Console.WriteLine("  Iris Camera");
             Console.WriteLine();
-            Console.WriteLine("    iPhoneWebcam                run it, then open the printed address on your phone");
-            Console.WriteLine("    iPhoneWebcam --install      add \"iPhone Webcam\" to the Windows camera list");
+            Console.WriteLine("    Iris                run it, then open the printed address on your phone");
+            Console.WriteLine("    Iris --install      add \"Iris Camera\" to the Windows camera list");
             Console.WriteLine("                                (needs administrator)");
-            Console.WriteLine("    iPhoneWebcam --uninstall    remove it again (needs administrator)");
-            Console.WriteLine("    iPhoneWebcam --autostart    start automatically when you sign in");
-            Console.WriteLine("    iPhoneWebcam --autostart-off  stop doing that");
-            Console.WriteLine("    iPhoneWebcam --console      keep the console window open instead of the tray icon");
-            Console.WriteLine("    iPhoneWebcam --no-webview   run without the built-in browser, for debugging");
+            Console.WriteLine("    Iris --uninstall    remove it again (needs administrator)");
+            Console.WriteLine("    Iris --autostart    start automatically when you sign in");
+            Console.WriteLine("    Iris --autostart-off  stop doing that");
+            Console.WriteLine("    Iris --console      keep the console window open instead of the tray icon");
+            Console.WriteLine("    Iris --no-webview   run without the built-in browser, for debugging");
             Console.WriteLine();
         }
 
@@ -308,7 +308,7 @@ namespace WindowsWebcamReceiver
             // every phone to accept the security warning all over again.
             var certDir = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "iPhoneWebcam");
+                "Iris");
             Directory.CreateDirectory(certDir);
             var certPath = Path.Combine(certDir, CertFileName);
 
@@ -363,7 +363,7 @@ namespace WindowsWebcamReceiver
 
             using var rsa = RSA.Create(2048);
             var request = new CertificateRequest(
-                new X500DistinguishedName("CN=iPhone Webcam (self-signed)"),
+                new X500DistinguishedName("CN=Iris Camera (self-signed)"),
                 rsa,
                 HashAlgorithmName.SHA256,
                 RSASignaturePadding.Pkcs1);

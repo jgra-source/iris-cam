@@ -1,5 +1,5 @@
 //
-// Creates (or removes) the "iPhone Webcam" camera device.
+// Creates (or removes) the "Iris Camera" camera device.
 //
 // Windows keeps a list of cameras that apps like Teams and Zoom read from.
 // This adds ours to that list and points it at our component, which is what
@@ -23,7 +23,7 @@
 #pragma comment(lib, "ole32.lib")
 
 static const wchar_t* kClsid       = L"{AD12AC5D-5241-4FF1-92AC-B45CAF2ABA15}";
-static const wchar_t* kFriendlyName = L"iPhone Webcam";
+static const wchar_t* kFriendlyName = L"Iris Camera";
 
 static int Fail(const wchar_t* what, HRESULT hr)
 {

@@ -53,7 +53,7 @@ namespace WindowsWebcamReceiver
 
                 form = new Form
                 {
-                    Text = "iPhone Webcam (background)",
+                    Text = "Iris Camera (background)",
                     ShowInTaskbar = false,
                     FormBorderStyle = FormBorderStyle.FixedToolWindow,
                     StartPosition = FormStartPosition.Manual,

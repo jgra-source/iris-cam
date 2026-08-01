@@ -46,7 +46,7 @@ namespace WindowsWebcamReceiver
         /// </summary>
         public static readonly string DefaultPath = System.IO.Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-            "iPhoneWebcam", "frames.bin");
+            "Iris", "frames.bin");
 
         // "IPWC" - lets a reader confirm it is looking at our buffer and not
         // some other program's leftovers.

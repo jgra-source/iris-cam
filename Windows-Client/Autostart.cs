@@ -21,7 +21,7 @@ namespace WindowsWebcamReceiver
     public static class Autostart
     {
         const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
-        const string ValueName = "iPhoneWebcam";
+        const string ValueName = "Iris";
 
         public static int Enable()
         {

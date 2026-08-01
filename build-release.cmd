@@ -1,7 +1,7 @@
 @echo off
 setlocal enabledelayedexpansion
 REM ===========================================================================
-REM Builds everything into one file: dist\iPhoneWebcam.exe
+REM Builds everything into one file: dist\Iris.exe
 REM
 REM Order matters. The camera driver and its registration tool are compiled
 REM first, because the app embeds them inside itself and writes them out when
@@ -75,11 +75,11 @@ del /q "%DIST%\web.config" 2>nul
 rmdir /s /q "%DIST%\wwwroot" 2>nul
 
 echo.
-for %%F in ("%DIST%\iPhoneWebcam.exe") do set SIZE=%%~zF
+for %%F in ("%DIST%\Iris.exe") do set SIZE=%%~zF
 set /a MB=!SIZE! / 1048576
-echo   Built: %DIST%\iPhoneWebcam.exe  (!MB! MB)
+echo   Built: %DIST%\Iris.exe  (!MB! MB)
 echo.
 echo   Distribute that one file. Users run:
-echo       iPhoneWebcam.exe --install     once, as administrator
-echo       iPhoneWebcam.exe               to use it
+echo       Iris.exe --install     once, as administrator
+echo       Iris.exe               to use it
 echo.

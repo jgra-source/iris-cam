@@ -72,7 +72,7 @@ namespace WindowsWebcamReceiver
 
                 g.DrawString(message + dots, title, titleBrush,
                     new RectangleF(0, centre.Y - titleSize, width, titleSize * 2), centred);
-                g.DrawString("iPhone Webcam", sub, subBrush,
+                g.DrawString("Iris Camera", sub, subBrush,
                     new RectangleF(0, centre.Y + radius * 0.55f, width, subSize * 2), centred);
             }
 

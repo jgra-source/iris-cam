@@ -7,7 +7,7 @@ using System.Security.Principal;
 namespace WindowsWebcamReceiver
 {
     /// <summary>
-    /// Installs and removes the "iPhone Webcam" camera device.
+    /// Installs and removes the "Iris Camera" camera device.
     ///
     /// The driver and its registration tool travel inside this executable as
     /// data. They cannot run from in there: Windows loads the driver by path,
@@ -21,7 +21,7 @@ namespace WindowsWebcamReceiver
     /// </summary>
     public static class CameraInstaller
     {
-        const string InstallDir = @"C:\Program Files\iPhoneWebcam";
+        const string InstallDir = @"C:\Program Files\Iris";
         const string DriverName = "VirtualCameraMediaSource.dll";
         const string ToolName = "register-camera.exe";
         const string Clsid = "{AD12AC5D-5241-4FF1-92AC-B45CAF2ABA15}";
@@ -70,7 +70,7 @@ namespace WindowsWebcamReceiver
                 }
 
                 Console.WriteLine();
-                Console.WriteLine("Done. \"iPhone Webcam\" is now in the camera list of Teams,");
+                Console.WriteLine("Done. \"Iris Camera\" is now in the camera list of Teams,");
                 Console.WriteLine("Zoom, Google Meet and Discord.");
                 Console.WriteLine("Run this program normally (no --install) to feed it your phone.");
                 return 0;
@@ -108,7 +108,7 @@ namespace WindowsWebcamReceiver
                     }
                 }
 
-                Console.WriteLine("\"iPhone Webcam\" removed.");
+                Console.WriteLine("\"Iris Camera\" removed.");
                 return 0;
             }
             catch (Exception ex)

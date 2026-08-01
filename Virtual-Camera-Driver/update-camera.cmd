@@ -9,7 +9,7 @@ REM Preferred over restarting the Windows camera service, which would cut the
 REM picture in anything currently using a camera.
 REM ---------------------------------------------------------------------------
 
-set DEST=C:\Program Files\iPhoneWebcam
+set DEST=C:\Program Files\Iris
 set LOG=%~dp0update-log.txt
 
 echo === update started %DATE% %TIME% > "%LOG%"
