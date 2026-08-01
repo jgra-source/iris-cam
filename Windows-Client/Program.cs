@@ -32,6 +32,9 @@ namespace WindowsWebcamReceiver
         // eventually feed the virtual camera.
         static readonly FrameStore frames = new();
 
+        // Latest diagnostics reported by receiver.html (raw JSON).
+        static string? sourceStats;
+
         static async Task Main(string[] args)
         {
             Console.WriteLine("Starting WebRTC Signaling Server...");
@@ -64,6 +67,17 @@ namespace WindowsWebcamReceiver
                     using var ws = await context.WebSockets.AcceptWebSocketAsync();
                     Console.WriteLine("iPhone (sender) connected.");
                     senderSocket = ws;
+
+                    // If a viewer is already waiting, tell the phone right away.
+                    // Without this the handshake depends on connection order: a
+                    // viewer that announced itself before the phone arrived had
+                    // its message dropped, and nothing ever triggered an offer.
+                    if (viewerSocket is { State: WebSocketState.Open })
+                    {
+                        Console.WriteLine("Viewer already waiting - prompting iPhone to offer.");
+                        await SendJson(ws, "{\"type\":\"viewer-ready\"}");
+                    }
+
                     await RelayMessages(ws, () => viewerSocket, "iPhone");
                     senderSocket = null;
                     Console.WriteLine("iPhone (sender) disconnected.");
@@ -105,7 +119,8 @@ namespace WindowsWebcamReceiver
                 width = frames.Width,
                 height = frames.Height,
                 sequence = frames.Sequence,
-                ageSeconds = double.IsInfinity(frames.AgeSeconds) ? -1 : Math.Round(frames.AgeSeconds, 2)
+                ageSeconds = double.IsInfinity(frames.AgeSeconds) ? -1 : Math.Round(frames.AgeSeconds, 2),
+                source = sourceStats
             }));
 
             // Latest frame as an image, so it can be eyeballed in a browser.
@@ -283,6 +298,18 @@ namespace WindowsWebcamReceiver
                 X509KeyStorageFlags.Exportable);
         }
 
+        static async Task SendJson(WebSocket ws, string json)
+        {
+            var bytes = Encoding.UTF8.GetBytes(json);
+            await lockObj.WaitAsync();
+            try
+            {
+                await ws.SendAsync(new ArraySegment<byte>(bytes),
+                    WebSocketMessageType.Text, true, CancellationToken.None);
+            }
+            finally { lockObj.Release(); }
+        }
+
         /// <summary>
         /// Reads raw RGBA frames off the websocket into the frame store.
         /// One frame can arrive as several websocket fragments, so we keep
@@ -309,6 +336,13 @@ namespace WindowsWebcamReceiver
                         if (result.CloseStatus.HasValue) return;
                         total += result.Count;
                     } while (!result.EndOfMessage && total < buffer.Length);
+
+                    // Text messages on this socket are diagnostics, not frames.
+                    if (result.MessageType == WebSocketMessageType.Text)
+                    {
+                        sourceStats = Encoding.UTF8.GetString(buffer, 0, total);
+                        continue;
+                    }
 
                     frames.Write(buffer.AsSpan(0, total), OutW, OutH);
 

@@ -105,7 +105,11 @@ function startPump() {
     const now = performance.now();
     // Cap the rate. Sending faster than the camera needs just burns CPU and
     // was what caused the throughput dips during measurement.
-    if (now - lastDraw >= 1000 / TARGET_FPS) {
+    // Tolerance matters here. Frames arrive one per decoded video frame, so at
+    // 30fps they land ~33.3ms apart. Demanding a full 33.3ms gap rejects any
+    // frame that arrives a hair early, and the next one is then 66ms out - which
+    // silently halves the rate to ~16fps. Accepting slightly-early frames fixes it.
+    if (now - lastDraw >= (1000 / TARGET_FPS) * 0.8) {
       lastDraw = now;
       drawLetterboxed();
       pushFrame();
@@ -157,6 +161,27 @@ function setPill(live, text) {
   pill.textContent = text;
   pill.className = live ? 'pill live' : 'pill';
 }
+
+// Reports where frames are being lost. Compares the rate WebRTC actually
+// delivers against the rate we manage to forward, so a slow phone can be told
+// apart from a slow pump. Sent to C# so it shows up in /frame-status.
+setInterval(async () => {
+  if (!pc || !frameWs || frameWs.readyState !== WebSocket.OPEN) return;
+  const report = await pc.getStats();
+  let inbound = null;
+  report.forEach(s => { if (s.type === 'inbound-rtp' && s.kind === 'video') inbound = s; });
+  if (!inbound) return;
+
+  frameWs.send(JSON.stringify({
+    kind: 'stats',
+    sourceFps: inbound.framesPerSecond ?? null,
+    sourceW: inbound.frameWidth ?? null,
+    sourceH: inbound.frameHeight ?? null,
+    framesDecoded: inbound.framesDecoded ?? null,
+    framesDropped: inbound.framesDropped ?? null,
+    pageHidden: document.hidden
+  }));
+}, 1000);
 </script>
 </body>
 </html>
