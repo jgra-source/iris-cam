@@ -44,8 +44,10 @@ namespace WindowsWebcamReceiver
 
         static async Task<int> Main(string[] args)
         {
-            if (args.Contains("--install"))   return CameraInstaller.Install();
-            if (args.Contains("--uninstall")) return CameraInstaller.Uninstall();
+            if (args.Contains("--install"))       return CameraInstaller.Install();
+            if (args.Contains("--uninstall"))     return CameraInstaller.Uninstall();
+            if (args.Contains("--autostart"))     return Autostart.Enable();
+            if (args.Contains("--autostart-off")) return Autostart.Disable();
             if (args.Contains("--help") || args.Contains("-h")) { PrintUsage(); return 0; }
 
             Console.WriteLine("Starting WebRTC Signaling Server...");
@@ -186,6 +188,8 @@ namespace WindowsWebcamReceiver
             Console.WriteLine("    iPhoneWebcam --install      add \"iPhone Webcam\" to the Windows camera list");
             Console.WriteLine("                                (needs administrator)");
             Console.WriteLine("    iPhoneWebcam --uninstall    remove it again (needs administrator)");
+            Console.WriteLine("    iPhoneWebcam --autostart    start automatically when you sign in");
+            Console.WriteLine("    iPhoneWebcam --autostart-off  stop doing that");
             Console.WriteLine("    iPhoneWebcam --no-webview   run without the built-in browser, for debugging");
             Console.WriteLine();
         }
@@ -210,6 +214,14 @@ namespace WindowsWebcamReceiver
                 Console.WriteLine("  No network address detected - connect to Wi-Fi and restart.");
             }
             Console.WriteLine();
+            var (auto, _) = Autostart.Status();
+            if (!auto)
+            {
+                Console.WriteLine("  This will NOT restart by itself after you reboot. The camera stays");
+                Console.WriteLine("  installed but shows \"Waiting for iPhone\" until this runs again.");
+                Console.WriteLine("  Run with --autostart to have it start when you sign in.");
+                Console.WriteLine();
+            }
             Console.WriteLine("  Safari will warn the connection is not private. This is");
             Console.WriteLine("  expected - the certificate is self-signed. Tap");
             Console.WriteLine("  'Show Details' then 'visit this website' to continue.");

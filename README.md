@@ -74,9 +74,25 @@ iPhoneWebcam.exe --install
 Administrator rights are required because adding a camera to Windows is a
 system-wide change. To remove it later: `iPhoneWebcam.exe --uninstall`.
 
-**Leave the app running** while you use the camera. When it is not running, the
-camera shows a "Waiting for iPhone" picture rather than freezing, because apps
-treat a camera that stops sending as broken.
+## After a restart
+
+The camera stays installed permanently — you never need to install it twice.
+**The program does not restart itself**, though, and that fails in a confusing
+way: the camera still appears in Teams and still shows a picture, just the
+"Waiting for iPhone" one, forever, because nothing is feeding it.
+
+So either run `iPhoneWebcam.exe` again after each restart, or set it once:
+
+```
+iPhoneWebcam.exe --autostart
+```
+
+That makes it start when you sign in. No administrator needed. Turn it off with
+`--autostart-off`, or from the **Startup** tab in Task Manager like any other
+program.
+
+Either way, **keep the program running while you are on a call** — it is what
+receives your phone's video. Closing its window stops the camera.
 
 ## Building it yourself
 
