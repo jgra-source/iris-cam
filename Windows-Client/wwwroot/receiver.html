@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Frame Receiver</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#111; color:#eee; font-family:'Segoe UI',sans-serif; padding:24px; line-height:1.5; }
+  h1 { font-size:19px; font-weight:500; }
+  .sub { color:#888; font-size:14px; margin-bottom:18px; max-width:78ch; }
+  #canvas { background:#000; border-radius:8px; max-width:640px; width:100%; border:1px solid #262626; }
+  #stats { margin-top:14px; font-family:Consolas,monospace; font-size:13px; color:#9de; white-space:pre; }
+  .pill { display:inline-block; font-size:12px; padding:3px 12px; border-radius:14px;
+          background:#333; color:#bbb; margin-bottom:12px; }
+  .pill.live { background:#1c5; color:#032; }
+  video { display:none; }
+</style>
+</head>
+<body>
+<h1>Frame Receiver</h1>
+<div class="sub">Takes the iPhone's video, squashes every frame into one fixed size with
+black bars as needed, and pushes the raw pixels to the C# app. The fixed size is what
+lets a camera device keep working when the phone is rotated.</div>
+
+<div class="pill" id="pill">waiting for iPhone…</div><br>
+<canvas id="canvas"></canvas>
+<div id="stats">—</div>
+
+<video id="remote" autoplay playsinline muted></video>
+
+<script>
+// The camera device will advertise this one size and never change it.
+const OUT_W = 1280, OUT_H = 720;
+const TARGET_FPS = 30;
+
+const canvas = document.getElementById('canvas');
+canvas.width = OUT_W; canvas.height = OUT_H;
+const ctx = canvas.getContext('2d', { willReadFrequently: true });
+const remote = document.getElementById('remote');
+const pill = document.getElementById('pill');
+const statsEl = document.getElementById('stats');
+
+let pc, sigWs, frameWs;
+let sent = 0, bytes = 0, skipped = 0, tick = performance.now();
+let lastDraw = 0;
+
+connectSignaling();
+connectFrames();
+
+// --- signaling: we are the "viewer" the iPhone streams to --------------------
+function connectSignaling() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  sigWs = new WebSocket(`${proto}//${location.host}/ws/viewer`);
+
+  sigWs.onopen = () => sigWs.send(JSON.stringify({ type: 'viewer-ready' }));
+
+  sigWs.onmessage = async (evt) => {
+    const msg = JSON.parse(evt.data);
+    if (msg.type === 'offer') {
+      setupPeer();
+      await pc.setRemoteDescription(new RTCSessionDescription({ type:'offer', sdp: msg.sdp }));
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      sigWs.send(JSON.stringify({ type:'answer', sdp: answer.sdp }));
+    } else if (msg.type === 'ice' && pc) {
+      await pc.addIceCandidate(new RTCIceCandidate(msg.candidate));
+    }
+  };
+
+  sigWs.onclose = () => { setPill(false, 'signaling lost — retrying'); setTimeout(connectSignaling, 2000); };
+}
+
+function setupPeer() {
+  pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+
+  pc.ontrack = (e) => {
+    remote.srcObject = e.streams[0];
+    remote.play().catch(err => console.error('play failed:', err));
+    startPump();
+  };
+  pc.onicecandidate = (e) => {
+    if (e.candidate) sigWs.send(JSON.stringify({ type:'ice', candidate: e.candidate }));
+  };
+  pc.onconnectionstatechange = () => {
+    const ok = pc.connectionState === 'connected';
+    setPill(ok, ok ? 'streaming' : pc.connectionState);
+  };
+}
+
+// --- frame channel to C# -----------------------------------------------------
+function connectFrames() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  frameWs = new WebSocket(`${proto}//${location.host}/ws/frames`);
+  frameWs.binaryType = 'arraybuffer';
+  frameWs.onclose = () => setTimeout(connectFrames, 2000);
+}
+
+// --- the actual work: letterbox into a fixed size, then ship the pixels -------
+function startPump() {
+  if (startPump.running) return;
+  startPump.running = true;
+
+  const pump = () => {
+    const now = performance.now();
+    // Cap the rate. Sending faster than the camera needs just burns CPU and
+    // was what caused the throughput dips during measurement.
+    if (now - lastDraw >= 1000 / TARGET_FPS) {
+      lastDraw = now;
+      drawLetterboxed();
+      pushFrame();
+    }
+    if ('requestVideoFrameCallback' in remote) remote.requestVideoFrameCallback(pump);
+    else requestAnimationFrame(pump);
+  };
+  pump();
+}
+
+// Scales the phone's picture to fit inside the fixed output without distorting
+// it, and centres it. Portrait video gets bars at the sides, landscape gets
+// bars top and bottom. Rotating the phone changes which - but never the
+// output size, which is the whole point.
+function drawLetterboxed() {
+  const vw = remote.videoWidth, vh = remote.videoHeight;
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, OUT_W, OUT_H);
+  if (!vw || !vh) return;
+
+  const scale = Math.min(OUT_W / vw, OUT_H / vh);
+  const dw = Math.round(vw * scale), dh = Math.round(vh * scale);
+  ctx.drawImage(remote, Math.round((OUT_W - dw) / 2), Math.round((OUT_H - dh) / 2), dw, dh);
+}
+
+function pushFrame() {
+  if (!frameWs || frameWs.readyState !== WebSocket.OPEN) return;
+
+  // If C# hasn't drained the socket, skip this frame rather than pile up
+  // latency. A late frame is worth less than a current one.
+  if (frameWs.bufferedAmount > 8 * 1024 * 1024) { skipped++; return; }
+
+  const data = ctx.getImageData(0, 0, OUT_W, OUT_H).data;
+  frameWs.send(data.buffer);
+  sent++; bytes += data.byteLength;
+
+  const secs = (performance.now() - tick) / 1000;
+  if (secs >= 1) {
+    statsEl.textContent =
+      `source   ${remote.videoWidth}×${remote.videoHeight}\n` +
+      `output   ${OUT_W}×${OUT_H}  (fixed)\n` +
+      `sending  ${(sent/secs).toFixed(1)} fps   ${(bytes/secs/1048576).toFixed(1)} MB/s\n` +
+      `skipped  ${skipped}`;
+    sent = 0; bytes = 0; skipped = 0; tick = performance.now();
+  }
+}
+
+function setPill(live, text) {
+  pill.textContent = text;
+  pill.className = live ? 'pill live' : 'pill';
+}
+</script>
+</body>
+</html>

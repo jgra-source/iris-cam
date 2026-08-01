@@ -28,6 +28,10 @@ namespace WindowsWebcamReceiver
         static WebSocket? viewerSocket;
         static readonly SemaphoreSlim lockObj = new(1, 1);
 
+        // Latest video frame, pushed here by receiver.html. This is what will
+        // eventually feed the virtual camera.
+        static readonly FrameStore frames = new();
+
         static async Task Main(string[] args)
         {
             Console.WriteLine("Starting WebRTC Signaling Server...");
@@ -80,6 +84,37 @@ namespace WindowsWebcamReceiver
                     Console.WriteLine("PC Viewer disconnected.");
                 }
                 else context.Response.StatusCode = 400;
+            });
+
+            // receiver.html pushes raw RGBA frames here, already letterboxed to
+            // one fixed size.
+            app.Map("/ws/frames", async context =>
+            {
+                if (!context.WebSockets.IsWebSocketRequest) { context.Response.StatusCode = 400; return; }
+
+                using var ws = await context.WebSockets.AcceptWebSocketAsync();
+                Console.WriteLine("Frame receiver connected.");
+                await ReceiveFrames(ws);
+                Console.WriteLine("Frame receiver disconnected.");
+            });
+
+            // Diagnostics: is C# actually holding real pixels?
+            app.MapGet("/frame-status", () => Results.Json(new
+            {
+                live = frames.IsLive,
+                width = frames.Width,
+                height = frames.Height,
+                sequence = frames.Sequence,
+                ageSeconds = double.IsInfinity(frames.AgeSeconds) ? -1 : Math.Round(frames.AgeSeconds, 2)
+            }));
+
+            // Latest frame as an image, so it can be eyeballed in a browser.
+            app.MapGet("/frame.bmp", () =>
+            {
+                var bmp = frames.ReadAsBmp();
+                return bmp == null
+                    ? Results.NotFound("no frame received yet")
+                    : Results.File(bmp, "image/bmp");
             });
 
             PrintStartupBanner(localIps);
@@ -246,6 +281,51 @@ namespace WindowsWebcamReceiver
             return new X509Certificate2(
                 cert.Export(X509ContentType.Pfx), (string?)null,
                 X509KeyStorageFlags.Exportable);
+        }
+
+        /// <summary>
+        /// Reads raw RGBA frames off the websocket into the frame store.
+        /// One frame can arrive as several websocket fragments, so we keep
+        /// reading until the message ends before treating it as complete -
+        /// storing a partial frame would show as a torn picture.
+        /// </summary>
+        static async Task ReceiveFrames(WebSocket ws)
+        {
+            const int OutW = 1280, OutH = 720;
+            var buffer = new byte[OutW * OutH * 4];
+            var reported = 0L;
+
+            try
+            {
+                while (ws.State == WebSocketState.Open)
+                {
+                    var total = 0;
+                    WebSocketReceiveResult result;
+                    do
+                    {
+                        result = await ws.ReceiveAsync(
+                            new ArraySegment<byte>(buffer, total, buffer.Length - total),
+                            CancellationToken.None);
+                        if (result.CloseStatus.HasValue) return;
+                        total += result.Count;
+                    } while (!result.EndOfMessage && total < buffer.Length);
+
+                    frames.Write(buffer.AsSpan(0, total), OutW, OutH);
+
+                    // Log the first frame and then every 300 (~10s at 30fps),
+                    // so the console shows life without becoming a firehose.
+                    var seq = frames.Sequence;
+                    if (seq == 1 || seq - reported >= 300)
+                    {
+                        Console.WriteLine($"Frames received: {seq} ({OutW}x{OutH})");
+                        reported = seq;
+                    }
+                }
+            }
+            catch (WebSocketException ex)
+            {
+                Console.WriteLine($"[frames] socket error: {ex.Message}");
+            }
         }
 
         static async Task RelayMessages(WebSocket source, Func<WebSocket?> getTarget, string label)
