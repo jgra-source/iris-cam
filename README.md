@@ -177,6 +177,15 @@ so both sides can simply open it.
 | `Virtual-Camera-Driver/` | The camera driver and its installer. Derived from Microsoft's sample — see `THIRD-PARTY-NOTICES.md` |
 | `iOS-Broadcaster/` | Abandoned native Swift approach, kept for reference. Needs a Mac; not used. |
 
+## Licence
+
+MIT — see [LICENSE](LICENSE).
+
+The camera driver is derived from Microsoft's Windows-Camera VirtualCamera
+sample, also MIT. See
+[Virtual-Camera-Driver/THIRD-PARTY-NOTICES.md](Virtual-Camera-Driver/THIRD-PARTY-NOTICES.md)
+for that notice and a list of what was changed.
+
 ## Cost
 
 Nothing. Every piece of this is free, and there is no paid service, subscription or developer account anywhere in it.
