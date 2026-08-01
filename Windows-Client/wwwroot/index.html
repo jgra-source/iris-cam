@@ -7,7 +7,12 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #000; color: #fff; font-family: -apple-system, sans-serif; height: 100vh; overflow: hidden; }
-        video { width: 100%; height: 100%; object-fit: cover; position: absolute; }
+        /* "contain", not "cover". Cover fills the phone's screen by cropping the
+           edges off, so you would be framing yourself against a picture that is
+           not the one being sent - the PC gets more than the phone shows you.
+           Contain shows the whole frame, with bars where the phone's screen is a
+           different shape, so what you see is what the other end receives. */
+        video { width: 100%; height: 100%; object-fit: contain; position: absolute; background: #000; }
         .overlay { position: absolute; z-index: 2; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 50px 20px; }
         #status { font-size: 14px; background: rgba(0,0,0,0.6); padding: 6px 16px; border-radius: 20px; }
         .controls { display: flex; gap: 16px; }
