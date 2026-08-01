@@ -1,0 +1,29 @@
+# Build output
+bin/
+obj/
+*.user
+
+# Generated HTTPS certificate - contains a PRIVATE KEY, never commit.
+# The app regenerates this automatically on first run.
+certs/
+*.pfx
+*.pem
+*.key
+
+# C++ build output (virtual camera driver)
+Debug/
+Release/
+x64/
+*.vcxproj.user
+*.aps
+*.pdb
+*.ilk
+*.exp
+*.lib
+*.dll
+*.obj
+
+# OS noise
+Thumbs.db
+desktop.ini
+.DS_Store

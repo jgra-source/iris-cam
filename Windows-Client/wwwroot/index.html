@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>iPhone Camera - Sender</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #000; color: #fff; font-family: -apple-system, sans-serif; height: 100vh; overflow: hidden; }
+        video { width: 100%; height: 100%; object-fit: cover; position: absolute; }
+        .overlay { position: absolute; z-index: 2; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 50px 20px; }
+        #status { font-size: 14px; background: rgba(0,0,0,0.6); padding: 6px 16px; border-radius: 20px; }
+        .controls { display: flex; gap: 16px; }
+        button { padding: 14px 32px; font-size: 17px; border-radius: 30px; border: none; font-weight: 600; cursor: pointer; }
+        #startBtn { background: rgba(48, 209, 88, 0.9); color: #fff; }
+        #stopBtn { background: rgba(255, 69, 58, 0.9); color: #fff; display: none; }
+        #flipBtn, #rotateBtn { background: rgba(255, 255, 255, 0.2); color: #fff; display: none; padding: 14px 20px; font-size: 20px; }
+        .connected { background: rgba(48, 209, 88, 0.8) !important; }
+    </style>
+</head>
+<body>
+    <video id="preview" autoplay playsinline muted></video>
+    <video id="hiddenSource" autoplay playsinline muted style="display:none"></video>
+    <canvas id="rotateCanvas" style="display:none"></canvas>
+    <div class="overlay">
+        <div id="status">Tap Start to begin</div>
+        <div class="controls">
+            <button id="startBtn">Start Camera</button>
+            <button id="flipBtn" title="Switch camera">🔄</button>
+            <button id="rotateBtn" title="Rotate video">↻</button>
+            <button id="stopBtn">Stop</button>
+        </div>
+    </div>
+    <script>
+        const video = document.getElementById('preview');
+        const hiddenSource = document.getElementById('hiddenSource');
+        const canvas = document.getElementById('rotateCanvas');
+        const ctx = canvas.getContext('2d');
+        const startBtn = document.getElementById('startBtn');
+        const flipBtn = document.getElementById('flipBtn');
+        const rotateBtn = document.getElementById('rotateBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const statusEl = document.getElementById('status');
+        // rawStream = untouched camera output. outputStream = what's actually
+        // previewed and sent (either rawStream directly, or a rotated re-draw of it).
+        let rawStream, outputStream, pc, ws;
+        let facingMode = 'user';
+        let rotationDeg = 0;
+        let rafId = null;
+
+        startBtn.onclick = start;
+        flipBtn.onclick = flipCamera;
+        rotateBtn.onclick = rotateVideo;
+        stopBtn.onclick = stop;
+
+        async function start() {
+            try {
+                rawStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode, width: {ideal:1920}, height: {ideal:1080}, frameRate: {ideal:30} },
+                    audio: false
+                });
+                await applyRotationPipeline();
+                startBtn.style.display = 'none';
+                flipBtn.style.display = 'block';
+                rotateBtn.style.display = 'block';
+                stopBtn.style.display = 'block';
+                statusEl.textContent = 'Camera active. Connecting...';
+                connect();
+            } catch(e) { statusEl.textContent = 'Error: ' + e.message; }
+        }
+
+        function stop() {
+            cancelRotationLoop();
+            if (rawStream) rawStream.getTracks().forEach(t => t.stop());
+            if (outputStream) outputStream.getTracks().forEach(t => t.stop());
+            if (pc) pc.close();
+            if (ws) ws.close();
+            startBtn.style.display = 'block';
+            flipBtn.style.display = 'none';
+            rotateBtn.style.display = 'none';
+            stopBtn.style.display = 'none';
+            statusEl.textContent = 'Stopped';
+            statusEl.classList.remove('connected');
+        }
+
+        // Swaps front/back lens without renegotiating the WebRTC connection:
+        // replaceTrack() swaps the media on the existing peer connection in place.
+        async function flipCamera() {
+            facingMode = facingMode === 'user' ? 'environment' : 'user';
+            try {
+                const newRawStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode, width: {ideal:1920}, height: {ideal:1080}, frameRate: {ideal:30} },
+                    audio: false
+                });
+                rawStream.getTracks().forEach(t => t.stop());
+                rawStream = newRawStream;
+                await applyRotationPipeline();
+            } catch(e) {
+                statusEl.textContent = 'Flip failed: ' + e.message;
+                facingMode = facingMode === 'user' ? 'environment' : 'user'; // revert
+            }
+        }
+
+        // Cycles 0/90/180/270. Re-uses the existing rawStream (no new camera
+        // permission prompt) and just changes how it's redrawn onto the canvas.
+        async function rotateVideo() {
+            rotationDeg = (rotationDeg + 90) % 360;
+            await applyRotationPipeline();
+        }
+
+        function cancelRotationLoop() {
+            if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null; }
+        }
+
+        // Rebuilds outputStream from rawStream + rotationDeg, updates the local
+        // preview to match exactly what's being sent, and swaps the track on the
+        // live peer connection (if one exists) via replaceTrack.
+        async function applyRotationPipeline() {
+            cancelRotationLoop();
+
+            if (rotationDeg === 0) {
+                outputStream = rawStream;
+                video.style.transform = '';
+                video.srcObject = outputStream;
+            } else {
+                hiddenSource.srcObject = rawStream;
+                await hiddenSource.play();
+                if (hiddenSource.readyState < 2) {
+                    await new Promise(res => { hiddenSource.onloadedmetadata = res; });
+                }
+
+                const srcW = hiddenSource.videoWidth;
+                const srcH = hiddenSource.videoHeight;
+                const swapped = rotationDeg === 90 || rotationDeg === 270;
+                canvas.width = swapped ? srcH : srcW;
+                canvas.height = swapped ? srcW : srcH;
+
+                const drawFrame = () => {
+                    ctx.save();
+                    ctx.translate(canvas.width / 2, canvas.height / 2);
+                    ctx.rotate(rotationDeg * Math.PI / 180);
+                    ctx.drawImage(hiddenSource, -srcW / 2, -srcH / 2, srcW, srcH);
+                    ctx.restore();
+                    rafId = requestAnimationFrame(drawFrame);
+                };
+                drawFrame();
+
+                outputStream = canvas.captureStream(30);
+                video.style.transform = '';
+                video.srcObject = outputStream;
+            }
+
+            if (pc) {
+                const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
+                if (sender) await sender.replaceTrack(outputStream.getVideoTracks()[0]);
+            }
+        }
+
+        function connect() {
+            const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${proto}//${location.host}/ws/sender`);
+
+            ws.onopen = () => {
+                statusEl.textContent = 'Signaling connected. Waiting for viewer...';
+                setupPeer();
+            };
+            ws.onmessage = async (evt) => {
+                const msg = JSON.parse(evt.data);
+                if (msg.type === 'viewer-ready') {
+                    // Viewer just connected, create and send offer
+                    const offer = await pc.createOffer();
+                    await pc.setLocalDescription(offer);
+                    ws.send(JSON.stringify({ type: 'offer', sdp: pc.localDescription.sdp }));
+                } else if (msg.type === 'answer') {
+                    await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: msg.sdp }));
+                } else if (msg.type === 'ice') {
+                    await pc.addIceCandidate(new RTCIceCandidate(msg.candidate));
+                }
+            };
+            ws.onclose = () => { statusEl.textContent = 'Signaling disconnected'; };
+        }
+
+        function setupPeer() {
+            pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+            outputStream.getTracks().forEach(t => pc.addTrack(t, outputStream));
+
+            pc.onicecandidate = (e) => {
+                if (e.candidate) ws.send(JSON.stringify({ type: 'ice', candidate: e.candidate }));
+            };
+            pc.onconnectionstatechange = () => {
+                if (pc.connectionState === 'connected') {
+                    statusEl.textContent = '● Streaming to PC';
+                    statusEl.classList.add('connected');
+                } else if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
+                    statusEl.textContent = 'Disconnected';
+                    statusEl.classList.remove('connected');
+                }
+            };
+        }
+    </script>
+</body>
+</html>
