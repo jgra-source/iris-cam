@@ -23,6 +23,10 @@ x64/
 *.dll
 *.obj
 
+# Spike / throwaway experiments. Contains Microsoft's VirtualCamera sample
+# (MIT), used only to prove the platform works before we write our own.
+spike/
+
 # OS noise
 Thumbs.db
 desktop.ini
