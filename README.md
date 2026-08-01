@@ -22,21 +22,22 @@ the camera at all.
 
 The camera part is Windows-only. The app part works anywhere.
 
-## What you need
+## Getting it
 
-- A Windows PC and an iPhone **on the same Wi-Fi network**
-- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) on the PC
-- iOS 14.3 or newer (any iPhone from the last several years)
+Download **iPhoneWebcam.exe** from
+[Releases](https://github.com/jgra-source/iphone-webcam/releases). One file,
+nothing to unzip, no runtime to install first.
 
-## Running it
+You need a Windows PC and an iPhone **on the same Wi-Fi network**, and iOS 14.3
+or newer (any iPhone from the last several years).
 
-From the `Windows-Client` folder:
+Windows will warn that the publisher is unknown, because the file is not
+code-signed. Choose **More info** then **Run anyway**, or build it yourself from
+source if you would rather not take that on trust.
 
-```
-dotnet run
-```
+## Using it
 
-The program prints the addresses to use. It looks something like this:
+Run `iPhoneWebcam.exe`. It prints the addresses to use:
 
 ```
   On your PC browser (viewer):
@@ -46,36 +47,45 @@ The program prints the addresses to use. It looks something like this:
       https://192.168.1.42:9443
 ```
 
-The iPhone address is detected automatically from your network, so it will not match the example above.
+The iPhone address is detected from your network, so it will not match the
+example above.
 
-Then:
-
-1. **On your iPhone**, open the address **in Safari**.
+1. **On your iPhone**, open that address **in Safari**.
 2. Tap **Start Camera** and allow camera access.
 3. To watch on your PC, open the viewer address in Chrome or Edge.
 
 The order does not matter — whichever connects second is told about the first.
 
-## Installing the camera (optional)
+## Adding the camera to Teams, Zoom and Meet
 
-Only needed if you want **iPhone Webcam** to appear inside Teams, Zoom, Meet and
-Discord. Skip it if you are happy watching in a browser.
+Only needed if you want **iPhone Webcam** in those apps' camera lists. Skip it if
+watching in a browser is enough.
 
-1. Build the driver in `Virtual-Camera-Driver/` (Release, x64). Needs the free
-   *Build Tools for Visual Studio* with the C++ workload and the Windows 11 SDK.
-2. Right-click `Virtual-Camera-Driver\install-camera.cmd` → **Run as administrator**.
+Right-click `iPhoneWebcam.exe`, **Run as administrator**, then:
+
+```
+iPhoneWebcam.exe --install
+```
 
 Administrator rights are required because adding a camera to Windows is a
-system-wide change. The installer copies the driver to `Program Files`, registers
-it, and creates the device.
+system-wide change. To remove it later: `iPhoneWebcam.exe --uninstall`.
 
-To replace it after rebuilding: `update-camera.cmd` (as administrator).
-To remove it entirely: `register-camera.exe /uninstall`, then delete the
-registry key and `C:\Program Files\iPhoneWebcam`.
+**Leave the app running** while you use the camera. When it is not running, the
+camera shows a "Waiting for iPhone" picture rather than freezing, because apps
+treat a camera that stops sending as broken.
 
-**The app must be running** for the camera to show your phone. When it is not,
-the camera shows a "Waiting for iPhone" picture rather than freezing — apps
-dislike a camera that stops sending anything.
+## Building it yourself
+
+Needs the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0), and —
+for the camera half — *Build Tools for Visual Studio* with the C++ workload and
+Windows 11 SDK 10.0.26100. Both free.
+
+```
+build-release.cmd
+```
+
+That produces `dist\iPhoneWebcam.exe`. To run the app alone without building the
+driver: `cd Windows-Client && dotnet run`.
 
 ## The security warning is expected
 
