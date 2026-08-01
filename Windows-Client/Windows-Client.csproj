@@ -9,6 +9,8 @@
     <RootNamespace>Windows_Client</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <!-- PlaceholderFrame reads bitmap rows directly; far faster than GetPixel. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>

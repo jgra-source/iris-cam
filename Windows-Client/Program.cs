@@ -35,6 +35,12 @@ namespace WindowsWebcamReceiver
         // Latest diagnostics reported by receiver.html (raw JSON).
         static string? sourceStats;
 
+        // Feeds the shared buffer the virtual camera reads from.
+        static FramePublisher? publisher;
+
+        // The one size the camera advertises. Must match receiver.html.
+        const int OutWidth = 1280, OutHeight = 720;
+
         static async Task Main(string[] args)
         {
             Console.WriteLine("Starting WebRTC Signaling Server...");
@@ -120,7 +126,9 @@ namespace WindowsWebcamReceiver
                 height = frames.Height,
                 sequence = frames.Sequence,
                 ageSeconds = double.IsInfinity(frames.AgeSeconds) ? -1 : Math.Round(frames.AgeSeconds, 2),
-                source = sourceStats
+                source = sourceStats,
+                published = publisher?.PublishedFrames ?? 0,
+                sharedBuffer = publisher?.BufferName
             }));
 
             // Latest frame as an image, so it can be eyeballed in a browser.
@@ -131,6 +139,9 @@ namespace WindowsWebcamReceiver
                     ? Results.NotFound("no frame received yet")
                     : Results.File(bmp, "image/bmp");
             });
+
+            publisher = new FramePublisher(frames, OutWidth, OutHeight);
+            publisher.Start();
 
             PrintStartupBanner(localIps);
 
