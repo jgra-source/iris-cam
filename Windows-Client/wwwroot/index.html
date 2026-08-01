@@ -58,10 +58,16 @@
         rotateBtn.onclick = rotateVideo;
         stopBtn.onclick = stop;
 
+        // Ask for exactly what the PC uses - 1280x720 - not more.
+        // Requesting 1080p sounds better but the extra pixels are captured,
+        // encoded, sent, decoded and then thrown away, because everything is
+        // squashed to 1280x720 at the far end. Worse, when the phone is under
+        // load it protects resolution by dropping the frame rate, so asking for
+        // pixels we discard costs smoothness we actually notice.
         async function start() {
             try {
                 rawStream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode, width: {ideal:1920}, height: {ideal:1080}, frameRate: {ideal:30} },
+                    video: { facingMode, width: {ideal:1280}, height: {ideal:720}, frameRate: {ideal:30} },
                     audio: false
                 });
                 await applyRotationPipeline();
@@ -94,7 +100,7 @@
             facingMode = facingMode === 'user' ? 'environment' : 'user';
             try {
                 const newRawStream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode, width: {ideal:1920}, height: {ideal:1080}, frameRate: {ideal:30} },
+                    video: { facingMode, width: {ideal:1280}, height: {ideal:720}, frameRate: {ideal:30} },
                     audio: false
                 });
                 rawStream.getTracks().forEach(t => t.stop());

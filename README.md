@@ -187,7 +187,9 @@ Nothing. Every piece of this is free, and there is no paid service, subscription
   The phone has to stay awake with the page open.
 - **The picture is not mirrored.** That matches how every real webcam behaves —
   Teams and Meet mirror your own preview for you, and the people you are talking
-  to see you the right way round.
+  to see you the right way round. A side effect: the "Waiting for iPhone" text
+  reads backwards in your own preview. It is the right way round for everyone
+  else, and a camera cannot tell whether an app will mirror it.
 - **Binaries are unsigned**, so Windows shows a warning if you distribute them.
   Building from source avoids this.
 

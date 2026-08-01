@@ -13,6 +13,14 @@ namespace WindowsWebcamReceiver
     /// politely wait - they show a frozen or black box, and some drop the camera
     /// from their list entirely. So when there is no phone, we still produce a
     /// picture, one that explains itself rather than looking broken.
+    ///
+    /// Note on the text reading backwards: video call apps flip your own preview
+    /// horizontally so it behaves like a mirror, and that flip applies to the
+    /// whole camera feed, text included. Everyone else on the call sees it the
+    /// right way round. A camera cannot know whether the app will mirror it, so
+    /// this cannot be right in both places at once. Decided 2026-08-01 to leave
+    /// the text unmirrored, which is correct for every viewer except yourself.
+    /// Do not "fix" it by drawing the text backwards.
     /// </summary>
     public static class PlaceholderFrame
     {
