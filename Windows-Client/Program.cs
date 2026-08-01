@@ -108,7 +108,14 @@ namespace WindowsWebcamReceiver
                     }
 
                     await RelayMessages(ws, () => viewerSocket, "iPhone");
-                    senderSocket = null;
+
+                    // Only forget it if it is still ours. A phone that drops and
+                    // comes straight back registers its new socket here before
+                    // this handler notices the old one died - clearing the slot
+                    // unconditionally would wipe the live connection, leaving the
+                    // phone convinced it is streaming to a PC it can no longer
+                    // reach.
+                    if (ReferenceEquals(senderSocket, ws)) senderSocket = null;
                     Console.WriteLine("iPhone (sender) disconnected.");
                 }
                 else context.Response.StatusCode = 400;
@@ -123,7 +130,7 @@ namespace WindowsWebcamReceiver
                     Console.WriteLine("PC Viewer connected.");
                     viewerSocket = ws;
                     await RelayMessages(ws, () => senderSocket, "Viewer");
-                    viewerSocket = null;
+                    if (ReferenceEquals(viewerSocket, ws)) viewerSocket = null;   // see the sender side
                     Console.WriteLine("PC Viewer disconnected.");
                 }
                 else context.Response.StatusCode = 400;

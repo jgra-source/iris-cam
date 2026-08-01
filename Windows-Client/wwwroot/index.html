@@ -14,7 +14,10 @@
            different shape, so what you see is what the other end receives. */
         video { width: 100%; height: 100%; object-fit: contain; position: absolute; background: #000; }
         .overlay { position: absolute; z-index: 2; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 50px 20px; }
-        #status { font-size: 14px; background: rgba(0,0,0,0.6); padding: 6px 16px; border-radius: 20px; }
+        #status { font-size: 14px; background: rgba(0,0,0,0.6); padding: 6px 16px; border-radius: 20px; text-align: center; }
+        /* Tappable only while something is wrong, so a healthy stream cannot be
+           knocked over by a stray tap. */
+        #status.retry { background: rgba(255, 159, 10, 0.85); color: #000; font-weight: 600; cursor: pointer; }
         .controls { display: flex; gap: 16px; }
         button { padding: 14px 32px; font-size: 17px; border-radius: 30px; border: none; font-weight: 600; cursor: pointer; }
         #startBtn { background: rgba(48, 209, 88, 0.9); color: #fff; }
@@ -53,45 +56,107 @@
         let rotationDeg = 0;
         let rafId = null;
 
+        // running is true only between Start and Stop. Every automatic retry
+        // checks it, so pressing Stop really does stop - otherwise closing the
+        // connection would just trigger the code that reopens it.
+        let running = false;
+        let reconnectTimer = null;
+        let reconnectDelay = 1000;
+        let recovering = false;
+
+        const MEDIA = {
+            // Ask for exactly what the PC uses - 1280x720 - not more.
+            // Requesting 1080p sounds better but the extra pixels are captured,
+            // encoded, sent, decoded and then thrown away, because everything is
+            // squashed to 1280x720 at the far end. Worse, when the phone is under
+            // load it protects resolution by dropping the frame rate, so asking
+            // for pixels we discard costs smoothness we actually notice.
+            width: {ideal:1280}, height: {ideal:720}, frameRate: {ideal:30}
+        };
+
         startBtn.onclick = start;
         flipBtn.onclick = flipCamera;
         rotateBtn.onclick = rotateVideo;
         stopBtn.onclick = stop;
+        statusEl.onclick = () => { if (running && statusEl.classList.contains('retry')) resume(); };
 
-        // Ask for exactly what the PC uses - 1280x720 - not more.
-        // Requesting 1080p sounds better but the extra pixels are captured,
-        // encoded, sent, decoded and then thrown away, because everything is
-        // squashed to 1280x720 at the far end. Worse, when the phone is under
-        // load it protects resolution by dropping the frame rate, so asking for
-        // pixels we discard costs smoothness we actually notice.
+        function setStatus(text, state) {
+            statusEl.textContent = text;
+            statusEl.classList.toggle('connected', state === 'live');
+            statusEl.classList.toggle('retry', state === 'retry');
+        }
+
         async function start() {
+            running = true;
             try {
-                rawStream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode, width: {ideal:1280}, height: {ideal:720}, frameRate: {ideal:30} },
-                    audio: false
-                });
-                await applyRotationPipeline();
+                await acquireCamera();
                 startBtn.style.display = 'none';
                 flipBtn.style.display = 'block';
                 rotateBtn.style.display = 'block';
                 stopBtn.style.display = 'block';
-                statusEl.textContent = 'Camera active. Connecting...';
+                setStatus('Camera active. Connecting...');
                 connect();
-            } catch(e) { statusEl.textContent = 'Error: ' + e.message; }
+            } catch(e) {
+                running = false;
+                setStatus('Error: ' + e.message);
+            }
         }
 
         function stop() {
+            running = false;                 // before anything else, so no retry fires
+            clearReconnectTimer();
             cancelRotationLoop();
             if (rawStream) rawStream.getTracks().forEach(t => t.stop());
             if (outputStream) outputStream.getTracks().forEach(t => t.stop());
-            if (pc) pc.close();
-            if (ws) ws.close();
+            if (pc) { pc.close(); pc = null; }
+            if (ws) { ws.close(); ws = null; }
             startBtn.style.display = 'block';
             flipBtn.style.display = 'none';
             rotateBtn.style.display = 'none';
             stopBtn.style.display = 'none';
-            statusEl.textContent = 'Stopped';
-            statusEl.classList.remove('connected');
+            setStatus('Stopped');
+        }
+
+        // --- camera --------------------------------------------------------
+
+        // Opens the camera, replaces whatever was open before, and rebuilds the
+        // preview and the outgoing track from it.
+        async function acquireCamera() {
+            const fresh = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode, ...MEDIA },
+                audio: false
+            });
+            if (rawStream) rawStream.getTracks().forEach(t => t.stop());
+            rawStream = fresh;
+            watchCameraTrack();
+            await applyRotationPipeline();
+        }
+
+        // iOS takes the camera away when the phone locks or Safari leaves the
+        // front. The track ends for good at that point - it never revives - so
+        // the only cure is to ask for the camera again.
+        function watchCameraTrack() {
+            const track = rawStream.getVideoTracks()[0];
+            if (!track) return;
+            track.onended = () => { if (running) recoverCamera(); };
+        }
+
+        async function recoverCamera() {
+            if (recovering || !running) return;
+            recovering = true;
+            setStatus('Camera stopped. Restarting...');
+            try {
+                await acquireCamera();
+                setStatus('Camera back. Reconnecting...');
+                kickReconnect();
+            } catch(e) {
+                // Safari refuses the camera while the page is in the background,
+                // so this is expected while the phone is still locked. Coming back
+                // to the page runs resume() and tries again.
+                setStatus('Tap here to restart the camera', 'retry');
+            } finally {
+                recovering = false;
+            }
         }
 
         // Swaps front/back lens without renegotiating the WebRTC connection:
@@ -99,15 +164,9 @@
         async function flipCamera() {
             facingMode = facingMode === 'user' ? 'environment' : 'user';
             try {
-                const newRawStream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode, width: {ideal:1280}, height: {ideal:720}, frameRate: {ideal:30} },
-                    audio: false
-                });
-                rawStream.getTracks().forEach(t => t.stop());
-                rawStream = newRawStream;
-                await applyRotationPipeline();
+                await acquireCamera();
             } catch(e) {
-                statusEl.textContent = 'Flip failed: ' + e.message;
+                setStatus('Flip failed: ' + e.message);
                 facingMode = facingMode === 'user' ? 'environment' : 'user'; // revert
             }
         }
@@ -167,28 +226,90 @@
             }
         }
 
-        function connect() {
-            const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            ws = new WebSocket(`${proto}//${location.host}/ws/sender`);
+        // --- signalling ----------------------------------------------------
 
-            ws.onopen = () => {
-                statusEl.textContent = 'Signaling connected. Waiting for viewer...';
-                setupPeer();
+        function connect() {
+            if (!running) return;
+            // Opening a second socket while one is already coming up would leave
+            // two senders fighting over the same slot on the PC.
+            if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) return;
+
+            const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            // Held in a local as well, so a handler that fires late acts on its
+            // own socket rather than on whichever one has replaced it since.
+            const socket = new WebSocket(`${proto}//${location.host}/ws/sender`);
+            ws = socket;
+
+            socket.onopen = () => {
+                reconnectDelay = 1000;
+                setStatus('Signaling connected. Waiting for viewer...');
+                // A fresh socket means a fresh session, so the old peer connection
+                // is worthless. No offer yet - the PC announces itself with
+                // viewer-ready, including when it was already waiting before we
+                // arrived.
+                rebuildPeer(false);
             };
-            ws.onmessage = async (evt) => {
+
+            socket.onmessage = async (evt) => {
+                if (socket !== ws) return;
                 const msg = JSON.parse(evt.data);
                 if (msg.type === 'viewer-ready') {
-                    // Viewer just connected, create and send offer
-                    const offer = await pc.createOffer();
-                    await pc.setLocalDescription(offer);
-                    ws.send(JSON.stringify({ type: 'offer', sdp: pc.localDescription.sdp }));
+                    await sendOffer();
+                } else if (!pc) {
+                    return;                    // nothing to apply it to
                 } else if (msg.type === 'answer') {
                     await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: msg.sdp }));
                 } else if (msg.type === 'ice') {
                     await pc.addIceCandidate(new RTCIceCandidate(msg.candidate));
                 }
             };
-            ws.onclose = () => { statusEl.textContent = 'Signaling disconnected'; };
+
+            socket.onerror = () => { try { socket.close(); } catch(e) {} };
+            socket.onclose = () => { if (running && socket === ws) scheduleReconnect(); };
+        }
+
+        // Backs off so a PC that is switched off is not hammered once a second
+        // all day, but stays quick at first because usually the phone has just
+        // been unlocked and the PC is right there.
+        function scheduleReconnect() {
+            if (!running || reconnectTimer) return;
+            setStatus(`Disconnected. Reconnecting in ${Math.round(reconnectDelay / 1000)}s...`, 'retry');
+            reconnectTimer = setTimeout(() => {
+                reconnectTimer = null;
+                connect();
+            }, reconnectDelay);
+            reconnectDelay = Math.min(reconnectDelay * 2, 5000);
+        }
+
+        function clearReconnectTimer() {
+            if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+        }
+
+        // Retry now rather than waiting out the backoff.
+        function kickReconnect() {
+            if (!running) return;
+            reconnectDelay = 1000;
+            clearReconnectTimer();
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                // The socket survived; only the video route died. Offer straight
+                // away, because no second viewer-ready is coming.
+                rebuildPeer(true);
+            } else {
+                connect();
+            }
+        }
+
+        function rebuildPeer(offerNow) {
+            if (pc) { try { pc.close(); } catch(e) {} pc = null; }
+            setupPeer();
+            if (offerNow) sendOffer();
+        }
+
+        async function sendOffer() {
+            if (!pc || !ws || ws.readyState !== WebSocket.OPEN) return;
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            ws.send(JSON.stringify({ type: 'offer', sdp: pc.localDescription.sdp }));
         }
 
         function setupPeer() {
@@ -196,18 +317,59 @@
             outputStream.getTracks().forEach(t => pc.addTrack(t, outputStream));
 
             pc.onicecandidate = (e) => {
-                if (e.candidate) ws.send(JSON.stringify({ type: 'ice', candidate: e.candidate }));
+                if (e.candidate && ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ type: 'ice', candidate: e.candidate }));
+                }
             };
+
+            const mine = pc;   // so a late event from a replaced connection is ignored
             pc.onconnectionstatechange = () => {
-                if (pc.connectionState === 'connected') {
-                    statusEl.textContent = '● Streaming to PC';
-                    statusEl.classList.add('connected');
-                } else if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
-                    statusEl.textContent = 'Disconnected';
-                    statusEl.classList.remove('connected');
+                if (pc !== mine) return;
+                const state = pc.connectionState;
+                if (state === 'connected') {
+                    reconnectDelay = 1000;
+                    setStatus('● Streaming to PC', 'live');
+                } else if (state === 'failed') {
+                    setStatus('Connection lost. Reconnecting...', 'retry');
+                    kickReconnect();
+                } else if (state === 'disconnected') {
+                    // Often just a Wi-Fi hiccup that mends itself within a few
+                    // seconds. Rebuilding immediately would throw away a working
+                    // connection, so give it a moment before giving up on it.
+                    setStatus('Connection unstable...');
+                    setTimeout(() => {
+                        if (running && pc === mine && pc.connectionState === 'disconnected') kickReconnect();
+                    }, 4000);
                 }
             };
         }
+
+        // --- coming back from a locked screen -------------------------------
+
+        // Everything above recovers on its own eventually. This is what makes it
+        // feel instant: the moment the page is in front again, stop waiting for
+        // timers and check both halves - the camera and the connection.
+        function resume() {
+            if (!running) return;
+
+            const track = rawStream && rawStream.getVideoTracks()[0];
+            if (!track || track.readyState === 'ended') { recoverCamera(); return; }
+
+            // A healthy stream is left strictly alone. This runs on every focus
+            // and every unlock, so rebuilding unconditionally would interrupt a
+            // connection that was working perfectly.
+            const healthy = ws && ws.readyState === WebSocket.OPEN
+                         && pc && pc.connectionState === 'connected';
+            if (healthy) return;
+
+            kickReconnect();
+        }
+
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) resume();
+        });
+        window.addEventListener('pageshow', resume);
+        window.addEventListener('focus', resume);
     </script>
 </body>
 </html>

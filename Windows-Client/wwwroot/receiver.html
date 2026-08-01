@@ -44,6 +44,7 @@ const statsEl = document.getElementById('stats');
 let pc, sigWs, frameWs;
 let sent = 0, bytes = 0, skipped = 0, tick = performance.now();
 let lastDraw = 0;
+let pumpToken = 0;
 
 connectSignaling();
 connectFrames();
@@ -72,6 +73,10 @@ function connectSignaling() {
 }
 
 function setupPeer() {
+  // A reconnecting phone sends a fresh offer, and each one needs a fresh peer
+  // connection. Letting the old one go rather than abandoning it keeps a long
+  // session from accumulating dead connections that still hold on to sockets.
+  if (pc) { try { pc.close(); } catch (e) {} }
   pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
 
   pc.ontrack = (e) => {
@@ -80,7 +85,9 @@ function setupPeer() {
     startPump();
   };
   pc.onicecandidate = (e) => {
-    if (e.candidate) sigWs.send(JSON.stringify({ type:'ice', candidate: e.candidate }));
+    if (e.candidate && sigWs && sigWs.readyState === WebSocket.OPEN) {
+      sigWs.send(JSON.stringify({ type:'ice', candidate: e.candidate }));
+    }
   };
   pc.onconnectionstatechange = () => {
     const ok = pc.connectionState === 'connected';
@@ -97,11 +104,19 @@ function connectFrames() {
 }
 
 // --- the actual work: letterbox into a fixed size, then ship the pixels -------
+// Called again every time the phone reconnects and hands us a new track. The
+// token is what keeps that to exactly one live loop: a new pump raises it, and
+// the old one sees the number has moved and quietly retires.
+//
+// A plain "already running" flag was wrong. Frame callbacks stop arriving when
+// the phone goes away, so the loop dies - but the flag stayed set, and the loop
+// was never restarted when the phone came back. Frames arrived and nobody
+// forwarded them.
 function startPump() {
-  if (startPump.running) return;
-  startPump.running = true;
+  const token = ++pumpToken;
 
   const pump = () => {
+    if (token !== pumpToken) return;   // a newer pump has taken over
     const now = performance.now();
     // Cap the rate. Sending faster than the camera needs just burns CPU and
     // was what caused the throughput dips during measurement.

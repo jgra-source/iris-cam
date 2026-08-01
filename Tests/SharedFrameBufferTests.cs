@@ -244,6 +244,15 @@ public sealed class SharedFrameBufferTests : IDisposable
         using var buffer = new SharedFrameBuffer(w, h, path);
         using var reader = new SeqlockReader(path);
 
+        // One frame before the reader starts. Until something is published, both
+        // slots are still the zeroes the file was created with, and a reader is
+        // perfectly entitled to return those - the header is valid and it has no
+        // way to know they are not a real, very black frame. The driver does
+        // exactly the same for the instant before the first frame arrives, which
+        // is harmless. Without this the reader spends that startup window
+        // reporting blank frames as torn ones.
+        buffer.Publish(Frame(w, h, 200));
+
         var stop = false;
         var torn = 0;
         var good = 0;

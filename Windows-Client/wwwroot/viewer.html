@@ -78,6 +78,9 @@
         }
 
         function setupPeer() {
+            // A reconnecting phone sends a fresh offer, and each one needs a
+            // fresh peer connection. Close the old one rather than abandon it.
+            if (pc) { try { pc.close(); } catch (e) {} }
             pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
 
             pc.ontrack = (event) => {
@@ -87,7 +90,9 @@
             };
 
             pc.onicecandidate = (e) => {
-                if (e.candidate) ws.send(JSON.stringify({ type: 'ice', candidate: e.candidate }));
+                if (e.candidate && ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ type: 'ice', candidate: e.candidate }));
+                }
             };
 
             pc.onconnectionstatechange = () => {

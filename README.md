@@ -153,6 +153,16 @@ To run the tests: `dotnet test Tests`. They need only the .NET SDK — no camera
 install, no C++ build, and nothing touches the live
 `C:\ProgramData\Iris\frames.bin`.
 
+The phone page's reconnect logic is checked separately, with the browser stubbed
+out so a real iPhone need not be locked and unlocked repeatedly:
+
+```
+node Tests/phone-reconnect.mjs
+```
+
+That one needs Node, but nothing is installed for it and nothing else depends on
+it.
+
 ## The security warning is expected
 
 Both browsers will warn that the connection is not private, and Safari will say something like *"This Connection Is Not Private"*.
@@ -200,8 +210,10 @@ Camera access requires `https`. Make sure you did not change the address to `htt
 Reload the viewer page. If it persists, open the browser console (F12) and check for errors.
 
 **The picture freezes, or the camera goes back to "Waiting for iPhone".**
-iOS shuts the camera off when the phone locks or you switch apps. Keep the phone
-awake with the page in front. Reopening it reconnects.
+iOS shuts the camera off when the phone locks or you switch apps. Bringing
+Safari back to the front reconnects on its own, usually within a second. If the
+status bar turns orange, tap it — that happens when iOS will not hand the camera
+back until the page is in front.
 
 **"Iris Camera" shows moving colour bands instead of my camera.**
 The driver cannot read the app's frames. Check the app is running, and that
@@ -269,7 +281,9 @@ Nothing. Every piece of this is free, and there is no paid service, subscription
 ## Known limitations
 
 - **iOS suspends the camera** when the phone locks or Safari is not in front.
-  The phone has to stay awake with the page open.
+  Bringing the page back to the front reconnects automatically, but the stream
+  does stop while the phone is away — so the phone still has to stay awake with
+  the page open for an uninterrupted call.
 - **The picture is not mirrored.** That matches how every real webcam behaves —
   Teams and Meet mirror your own preview for you, and the people you are talking
   to see you the right way round. A side effect: the "Waiting for iPhone" text
