@@ -134,6 +134,19 @@ namespace WindowsWebcamReceiver
 
             PrintStartupBanner(localIps);
 
+            // Start the invisible browser that actually decodes the video.
+            // --no-webview skips it, for when you'd rather drive receiver.html
+            // in a real browser window and watch what it's doing.
+            if (!args.Contains("--no-webview"))
+            {
+                await app.StartAsync();
+                WebViewHost.Start($"https://localhost:{Port}/receiver.html");
+                await app.WaitForShutdownAsync();
+                return;
+            }
+
+            Console.WriteLine("Running without the background browser (--no-webview).");
+            Console.WriteLine($"Open https://localhost:{Port}/receiver.html yourself to feed frames.\n");
             await app.RunAsync();
         }
 
@@ -216,7 +229,13 @@ namespace WindowsWebcamReceiver
         /// </summary>
         static X509Certificate2 GetOrCreateCertificate(List<IPAddress> localIps)
         {
-            var certDir = Path.Combine(AppContext.BaseDirectory, "certs");
+            // Deliberately NOT in the build output folder. That path changes with
+            // build configuration and target framework, and is wiped by a clean -
+            // each of which would silently regenerate the certificate and force
+            // every phone to accept the security warning all over again.
+            var certDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "iPhoneWebcam");
             Directory.CreateDirectory(certDir);
             var certPath = Path.Combine(certDir, CertFileName);
 
