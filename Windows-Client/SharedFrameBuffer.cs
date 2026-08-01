@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.IO.MemoryMappedFiles;
 using System.Threading;
 
@@ -27,10 +28,25 @@ namespace WindowsWebcamReceiver
     ///
     /// Pixels are stored as BGRA, which is what Media Foundation calls RGB32 -
     /// the format the camera will hand to Windows.
+    ///
+    /// The buffer is backed by a FILE rather than a named shared-memory object,
+    /// and that detail matters. Windows loads the camera inside a system service
+    /// that runs in a different session to this app. Named objects created with
+    /// the ordinary "Local\" prefix are private to one session, so the camera
+    /// looked for our buffer and found nothing. The "Global\" prefix would cross
+    /// sessions but needs a privilege a normal program does not have. A plain
+    /// file path belongs to no session at all, so both sides simply open it.
     /// </summary>
     public sealed class SharedFrameBuffer : IDisposable
     {
-        public const string DefaultName = "Local\\iPhoneWebcamFrames";
+        /// <summary>
+        /// Shared with the camera driver, which opens this exact path.
+        /// ProgramData is used because every account can read it, including the
+        /// restricted one the camera service runs under.
+        /// </summary>
+        public static readonly string DefaultPath = System.IO.Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+            "iPhoneWebcam", "frames.bin");
 
         // "IPWC" - lets a reader confirm it is looking at our buffer and not
         // some other program's leftovers.
@@ -46,18 +62,28 @@ namespace WindowsWebcamReceiver
 
         readonly MemoryMappedFile mmf;
         readonly MemoryMappedViewAccessor view;
+        readonly FileStream file;
         readonly int width, height, slotSize;
         long sequence;
         int activeSlot;
 
-        public SharedFrameBuffer(int width, int height, string name = DefaultName)
+        public SharedFrameBuffer(int width, int height, string? path = null)
         {
             this.width = width;
             this.height = height;
             slotSize = width * height * 4;
+            Path_ = path ?? DefaultPath;
 
             var capacity = HeaderSize + slotSize * 2L;
-            mmf = MemoryMappedFile.CreateOrOpen(name, capacity, MemoryMappedFileAccess.ReadWrite);
+            Directory.CreateDirectory(System.IO.Path.GetDirectoryName(Path_)!);
+
+            // FileShare.ReadWrite so the camera can read while we keep writing.
+            file = new FileStream(Path_, FileMode.OpenOrCreate,
+                FileAccess.ReadWrite, FileShare.ReadWrite);
+            if (file.Length < capacity) file.SetLength(capacity);
+
+            mmf = MemoryMappedFile.CreateFromFile(file, null, capacity,
+                MemoryMappedFileAccess.ReadWrite, HandleInheritability.None, leaveOpen: true);
             view = mmf.CreateViewAccessor(0, capacity, MemoryMappedFileAccess.ReadWrite);
 
             view.Write(OffMagic, Magic);
@@ -71,7 +97,8 @@ namespace WindowsWebcamReceiver
         }
 
         public long Sequence => Interlocked.Read(ref sequence);
-        public string Name { get; } = DefaultName;
+        public string Path_ { get; }
+        public string Name => Path_;
 
         /// <summary>
         /// Publishes one frame. <paramref name="rgba"/> is raw RGBA as produced
@@ -84,11 +111,9 @@ namespace WindowsWebcamReceiver
             var target = 1 - activeSlot;          // the slot nobody is reading
             var offset = HeaderSize + target * slotSize;
 
-            // Odd sequence means "a write is in progress" - a reader seeing an
-            // odd value, or a different value afterwards, knows to retry.
-            var next = Interlocked.Increment(ref sequence);
-            view.Write(OffSequence, next);
-
+            // Fill the spare slot first, with no "busy" flag raised. Readers are
+            // looking at the other slot, so this is safe however long it takes -
+            // and it does take a while, since it is several megabytes per frame.
             var buffer = rentBuffer ??= new byte[slotSize];
             for (var i = 0; i < slotSize; i += 4)
             {
@@ -99,12 +124,22 @@ namespace WindowsWebcamReceiver
             }
             view.WriteArray(offset, buffer, 0, slotSize);
 
-            // Point readers at the slot we just filled, then close the write.
+            // Only the swap needs protecting. An odd counter means "changing
+            // right now"; a reader that sees it simply waits and looks again.
+            //
+            // Raising the flag around the copy above instead would hold it open
+            // for milliseconds every frame, and a reader could hit it several
+            // times in a row, give up, and show its fallback picture - which
+            // looks like flickering. Keeping the flag up for only these few
+            // instructions makes that vanishingly unlikely.
+            var next = Interlocked.Increment(ref sequence);
+            view.Write(OffSequence, next);      // odd: swap in progress
+
             view.Write(OffActiveSlot, target);
             activeSlot = target;
 
             next = Interlocked.Increment(ref sequence);
-            view.Write(OffSequence, next);
+            view.Write(OffSequence, next);      // even: readers may proceed
         }
 
         [ThreadStatic] static byte[]? rentBuffer;
@@ -113,6 +148,7 @@ namespace WindowsWebcamReceiver
         {
             view.Dispose();
             mmf.Dispose();
+            file.Dispose();
         }
     }
 }

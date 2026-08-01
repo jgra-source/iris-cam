@@ -6,8 +6,9 @@
 // it, so it stays deliberately dull: no allocation, no exceptions, no waiting
 // on anything, and it always fails quietly rather than throwing.
 //
-// The desktop app writes frames into shared memory. It alternates between two
-// slots and bumps a counter before and after each write. We copy from whichever
+// The desktop app writes frames into a memory-mapped file at a fixed path under
+// ProgramData. It alternates between two slots and bumps a counter before and
+// after each write. We copy from whichever
 // slot it points at, then check the counter did not move while we copied. If it
 // did, our copy might be half of one frame and half of the next, so we discard
 // it and try again. Because we never take a lock, a slow reader here can never
@@ -76,6 +77,7 @@ public:
     {
         if (m_view)  { UnmapViewOfFile(m_view); m_view = nullptr; }
         if (m_map)   { CloseHandle(m_map);      m_map = nullptr; }
+        if (m_file)  { CloseHandle(m_file);     m_file = nullptr; }
     }
 
 private:
@@ -95,11 +97,27 @@ private:
         if (now - m_lastTry < 1000) return false;
         m_lastTry = now;
 
-        m_map = OpenFileMappingW(FILE_MAP_READ, FALSE, L"Local\\iPhoneWebcamFrames");
-        if (m_map == nullptr) return false;
+        // A file, not a named object. Windows loads this code inside a service
+        // running in a different session, where names created by an ordinary
+        // program are simply not visible. A path belongs to no session.
+        // Sharing is permissive because the app keeps writing while we read.
+        m_file = CreateFileW(
+            L"C:\\ProgramData\\iPhoneWebcam\\frames.bin",
+            GENERIC_READ,
+            FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+            nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (m_file == INVALID_HANDLE_VALUE) { m_file = nullptr; return false; }
+
+        m_map = CreateFileMappingW(m_file, nullptr, PAGE_READONLY, 0, 0, nullptr);
+        if (m_map == nullptr) { CloseHandle(m_file); m_file = nullptr; return false; }
 
         m_view = (BYTE*)MapViewOfFile(m_map, FILE_MAP_READ, 0, 0, 0);
-        if (m_view == nullptr) { CloseHandle(m_map); m_map = nullptr; return false; }
+        if (m_view == nullptr)
+        {
+            CloseHandle(m_map);  m_map = nullptr;
+            CloseHandle(m_file); m_file = nullptr;
+            return false;
+        }
         return true;
     }
 
@@ -113,6 +131,7 @@ private:
         return *reinterpret_cast<volatile const int64_t*>(m_view + off);
     }
 
+    HANDLE      m_file = nullptr;
     HANDLE      m_map = nullptr;
     BYTE*       m_view = nullptr;
     ULONGLONG   m_lastTry = 0;
