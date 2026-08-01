@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera Check</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #111; color: #eee; font-family: 'Segoe UI', sans-serif; padding: 28px; line-height: 1.5; }
+        h1 { font-size: 20px; font-weight: 500; margin-bottom: 6px; }
+        .sub { color: #888; font-size: 14px; margin-bottom: 22px; }
+        button { background: #2d7; color: #062; border: none; padding: 10px 20px; border-radius: 6px;
+                 font-size: 15px; font-weight: 600; cursor: pointer; }
+        button:hover { filter: brightness(1.1); }
+        ul { list-style: none; margin: 18px 0; }
+        li { background: #1c1c1c; border: 1px solid #2a2a2a; border-radius: 8px; padding: 12px 16px;
+             margin-bottom: 8px; display: flex; align-items: center; gap: 14px; }
+        li .name { flex: 1; font-size: 15px; }
+        li .id { color: #666; font-size: 11px; font-family: monospace; }
+        li.virtual { border-color: #2d7; }
+        li.virtual .name::after { content: ' — looks like a virtual camera'; color: #2d7; font-size: 12px; }
+        video { width: 100%; max-width: 720px; background: #000; border-radius: 10px; margin-top: 18px; }
+        #status { margin-top: 14px; font-size: 14px; color: #999; }
+        .err { color: #f66; }
+    </style>
+</head>
+<body>
+    <h1>Camera Check</h1>
+    <div class="sub">Lists every camera this browser can see, and plays whichever you pick.
+        Use it to confirm a virtual camera is visible to Chrome (and therefore to Google Meet).</div>
+
+    <button id="startBtn">Grant access &amp; list cameras</button>
+    <ul id="list"></ul>
+    <video id="preview" autoplay playsinline muted></video>
+    <div id="status"></div>
+
+    <script>
+        const startBtn = document.getElementById('startBtn');
+        const list = document.getElementById('list');
+        const preview = document.getElementById('preview');
+        const status = document.getElementById('status');
+
+        startBtn.onclick = init;
+
+        // Camera labels are hidden until the user grants permission once, so we
+        // ask for any camera first, then immediately release it.
+        async function init() {
+            status.textContent = 'Requesting camera permission…';
+            status.className = '';
+            try {
+                const probe = await navigator.mediaDevices.getUserMedia({ video: true });
+                probe.getTracks().forEach(t => t.stop());
+            } catch (e) {
+                status.textContent = 'Permission denied or no camera: ' + e.message;
+                status.className = 'err';
+                return;
+            }
+            await listCameras();
+        }
+
+        async function listCameras() {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const cams = devices.filter(d => d.kind === 'videoinput');
+            list.innerHTML = '';
+
+            if (cams.length === 0) {
+                status.textContent = 'No cameras found.';
+                status.className = 'err';
+                return;
+            }
+
+            cams.forEach(cam => {
+                const li = document.createElement('li');
+                // Heuristic only - real hardware rarely uses these words.
+                if (/virtual|vcam|obs|swvcam/i.test(cam.label)) li.className = 'virtual';
+                li.innerHTML = `<span class="name">${cam.label || '(unnamed)'}</span>
+                                <span class="id">${cam.deviceId.slice(0, 16)}…</span>`;
+                const btn = document.createElement('button');
+                btn.textContent = 'View';
+                btn.onclick = () => view(cam.deviceId, cam.label);
+                li.appendChild(btn);
+                list.appendChild(li);
+            });
+
+            status.textContent = `${cams.length} camera(s) found. Click View to test one.`;
+        }
+
+        async function view(deviceId, label) {
+            status.textContent = 'Opening ' + label + '…';
+            status.className = '';
+            try {
+                if (preview.srcObject) preview.srcObject.getTracks().forEach(t => t.stop());
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { deviceId: { exact: deviceId } }
+                });
+                preview.srcObject = stream;
+                await preview.play();
+                const track = stream.getVideoTracks()[0];
+                const s = track.getSettings();
+                status.textContent = `Playing "${label}" — ${s.width}×${s.height} @ ${s.frameRate || '?'}fps.
+                                      If you see moving picture, this camera works in Chrome.`;
+            } catch (e) {
+                status.textContent = `Failed to open "${label}": ${e.name} — ${e.message}`;
+                status.className = 'err';
+            }
+        }
+    </script>
+</body>
+</html>
