@@ -31,3 +31,10 @@ spike/
 Thumbs.db
 desktop.ini
 .DS_Store
+
+# Native build output / restored packages
+Virtual-Camera-Driver/packages/
+Virtual-Camera-Driver/x64/
+Virtual-Camera-Driver/*.exe
+Virtual-Camera-Driver/install-log.txt
+VirtualC.*/
