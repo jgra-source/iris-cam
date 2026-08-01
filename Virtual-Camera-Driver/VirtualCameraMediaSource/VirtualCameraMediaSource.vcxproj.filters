@@ -28,12 +28,6 @@
     <ClCompile Include="EventHandler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="HWMediaSource.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="HWMediaStream.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="pch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -52,21 +46,9 @@
     <ClCompile Include="winrtCommon.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="AugmentedMediaSource.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="AugmentedMediaStream.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="EventHandler.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="HWMediaSource.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="HWMediaStream.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="pch.h">
@@ -85,12 +67,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="VirtualCameraMediaSource.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="AugmentedMediaSource.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="AugmentedMediaStream.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
