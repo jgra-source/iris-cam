@@ -118,6 +118,28 @@ Camera. Iris itself keeps running in the background.
 **Hold the phone sideways** — landscape fills the whole frame. Upright leaves
 black bars down both sides.
 
+## Put it on your iPhone home screen
+
+Typing the address every time gets old. Save it once and it becomes an icon you
+tap, like an app.
+
+1. Open the address in **Safari** on your iPhone
+2. Tap **Share** — the square with an arrow pointing up
+3. Scroll down and tap **Add to Home Screen**
+4. Name it **Iris**, then tap **Add**
+
+Tapping that icon now goes straight to the camera page. Tap **Start Camera** and
+you are streaming.
+
+It still opens in Safari, and that is on purpose: the certificate notice and the
+camera permission both need Safari to work properly.
+
+**One thing to know.** The shortcut remembers your PC's address on your network.
+That address usually stays the same for weeks, but it can change when your router
+restarts. If the icon stops loading one day, that is why — check the current
+address by right-clicking the Iris icon next to your clock, and save the shortcut
+again.
+
 ## Removing it
 
 ```
