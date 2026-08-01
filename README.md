@@ -4,11 +4,23 @@ Use your iPhone as a high-quality camera on your PC, over Wi-Fi, with no app to 
 
 No Mac needed. No App Store. No account. Free.
 
-## What this is right now
+## What it does
 
-You run a small program on your PC. It gives you a web address. You open that address in Safari on your iPhone, tap Start, and your phone's camera appears on your PC screen.
+Your iPhone becomes a camera that Windows knows about. Open **Teams**, **Zoom**,
+**Google Meet** or **Discord**, look in the camera list, and pick **iPhone Webcam** —
+exactly as you would pick a USB webcam.
 
-**It does not yet appear as a camera inside Zoom, Teams or Meet.** That part is planned but not built — see [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
+You can also just watch the picture on your PC in a browser, without installing
+the camera at all.
+
+### Two parts, and you may only want the first
+
+| | What you get | Install needed |
+|---|---|---|
+| **The app** | iPhone video on your PC screen, in a browser | None beyond running it |
+| **The camera** | "iPhone Webcam" in Teams, Zoom, Meet, Discord | One-time, needs administrator |
+
+The camera part is Windows-only. The app part works anywhere.
 
 ## What you need
 
@@ -38,12 +50,32 @@ The iPhone address is detected automatically from your network, so it will not m
 
 Then:
 
-1. **On your PC**, open the viewer address in Chrome or Edge. You should see "Waiting for iPhone…".
-2. **On your iPhone**, open the other address **in Safari**.
-3. Tap **Start Camera** and allow camera access.
-4. Your camera should appear on the PC within a second or two.
+1. **On your iPhone**, open the address **in Safari**.
+2. Tap **Start Camera** and allow camera access.
+3. To watch on your PC, open the viewer address in Chrome or Edge.
 
-Open the PC viewer first. It signals that it is ready, which is what tells the phone to start sending.
+The order does not matter — whichever connects second is told about the first.
+
+## Installing the camera (optional)
+
+Only needed if you want **iPhone Webcam** to appear inside Teams, Zoom, Meet and
+Discord. Skip it if you are happy watching in a browser.
+
+1. Build the driver in `Virtual-Camera-Driver/` (Release, x64). Needs the free
+   *Build Tools for Visual Studio* with the C++ workload and the Windows 11 SDK.
+2. Right-click `Virtual-Camera-Driver\install-camera.cmd` → **Run as administrator**.
+
+Administrator rights are required because adding a camera to Windows is a
+system-wide change. The installer copies the driver to `Program Files`, registers
+it, and creates the device.
+
+To replace it after rebuilding: `update-camera.cmd` (as administrator).
+To remove it entirely: `register-camera.exe /uninstall`, then delete the
+registry key and `C:\Program Files\iPhoneWebcam`.
+
+**The app must be running** for the camera to show your phone. When it is not,
+the camera shows a "Waiting for iPhone" picture rather than freezing — apps
+dislike a camera that stops sending anything.
 
 ## The security warning is expected
 
@@ -91,36 +123,75 @@ Camera access requires `https`. Make sure you did not change the address to `htt
 **"Live" shows on the PC but the picture is black.**
 Reload the viewer page. If it persists, open the browser console (F12) and check for errors.
 
-**Nothing happens after tapping Start.**
-Open the PC viewer page first, then reload the page on the phone. The phone waits for a viewer to be present before it starts sending.
+**The picture freezes, or the camera goes back to "Waiting for iPhone".**
+iOS shuts the camera off when the phone locks or you switch apps. Keep the phone
+awake with the page in front. Reopening it reconnects.
+
+**"iPhone Webcam" shows moving colour bands instead of my camera.**
+The driver cannot read the app's frames. Check the app is running, and that
+`C:\ProgramData\iPhoneWebcamrames.bin` exists.
+
+**"iPhone Webcam" is missing from an app's camera list.**
+Some apps only look for cameras at startup. Close it fully and reopen.
 
 ## How it works
 
 ```
-iPhone Safari  ──WebRTC video──▶  PC browser
-      │                                │
-      └────── handshake only ──────────┘
-                    │
-            C# server on the PC
-      (serves the pages, introduces the two
-       sides to each other, then steps out)
+iPhone Safari
+     │  camera video over Wi-Fi (WebRTC)
+     ▼
+Invisible browser inside the app   ← decodes the video
+     │  raw pixels, letterboxed to a fixed 1280x720
+     ▼
+C:\ProgramData\iPhoneWebcamrames.bin   ← a file both sides can reach
+     │
+     ▼
+Camera driver, loaded by Windows inside Teams / Chrome / Zoom
+     │
+     ▼
+"iPhone Webcam" in the camera list
 ```
 
-The video travels directly from the phone to the PC browser. The C# server only helps them find each other at the start — it never sees or handles the video itself.
+A few decisions worth knowing, because they are not obvious:
+
+**The browser does the decoding.** Turning compressed video back into pictures is
+difficult and the browser is already excellent at it, so the app runs one with no
+window. That avoids shipping a video library and its licensing entirely.
+
+**Every frame is squashed into the same size.** A camera has to advertise one
+resolution and keep it. Rotating the phone swaps the picture between tall and
+wide, so frames are letterboxed with black bars instead — the size never changes
+and calls do not break mid-way.
+
+**Frames pass through a file, not shared memory with a name.** Windows loads
+camera code inside a system service that runs in a different session, where names
+created by an ordinary program are invisible. A file path belongs to no session,
+so both sides can simply open it.
 
 ## Project layout
 
 | Folder | What is in it |
 |---|---|
-| `Windows-Client/` | The C# program: serves the pages and handles the handshake |
-| `Windows-Client/wwwroot/` | `index.html` (phone camera page), `viewer.html` (PC page) |
-| `Virtual-Camera-Driver/` | Early sketch of the future virtual camera. **Not working yet.** |
+| `Windows-Client/` | The desktop app: serves the pages, runs the invisible browser, publishes frames |
+| `Windows-Client/wwwroot/` | `index.html` (phone), `viewer.html` (watch on PC), `receiver.html` (invisible), `camera-check.html` (lists cameras) |
+| `Virtual-Camera-Driver/` | The camera driver and its installer. Derived from Microsoft's sample — see `THIRD-PARTY-NOTICES.md` |
 | `iOS-Broadcaster/` | Abandoned native Swift approach, kept for reference. Needs a Mac; not used. |
 
 ## Cost
 
 Nothing. Every piece of this is free, and there is no paid service, subscription or developer account anywhere in it.
 
-## Status and what comes next
+## Known limitations
 
-See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the full plan, including the work needed to make this appear as a real camera device in Zoom, Teams and Meet.
+- **iOS suspends the camera** when the phone locks or Safari is not in front.
+  The phone has to stay awake with the page open.
+- **The picture is not mirrored.** That matches how every real webcam behaves —
+  Teams and Meet mirror your own preview for you, and the people you are talking
+  to see you the right way round.
+- **Binaries are unsigned**, so Windows shows a warning if you distribute them.
+  Building from source avoids this.
+
+## Status
+
+See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the full build history,
+including what was tried, what failed, and why each decision was made.
