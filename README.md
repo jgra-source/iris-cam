@@ -112,6 +112,11 @@ Drag it out onto the taskbar to keep it in view.
 Right-click it for the phone address (click to copy), **Watch on this PC**,
 **Start when I sign in**, and **Quit**.
 
+**Use one viewing route at a time.** The browser viewer and the hidden receiver
+share one phone connection slot. Opening **Watch on this PC** can interrupt
+**Iris Camera** in your call. Close that viewer when using the virtual camera;
+if it stays stuck, quit and relaunch Iris, then restart the phone stream.
+
 **Each time you want to use it:** open the address in Safari and tap Start
 Camera. Iris itself keeps running in the background.
 
@@ -177,15 +182,29 @@ To run the tests: `dotnet test Tests`. They need only the .NET SDK — no camera
 install, no C++ build, and nothing touches the live
 `C:\ProgramData\Iris\frames.bin`.
 
-The phone page's reconnect logic is checked separately, with the browser stubbed
-out so a real iPhone need not be locked and unlocked repeatedly:
+The phone's reconnect logic and the receiver's frame acknowledgments and
+scheduling are checked with stubbed browsers:
 
 ```
 node Tests/phone-reconnect.mjs
+node --test Tests/receiver-backpressure.mjs
 ```
 
-That one needs Node, but nothing is installed for it and nothing else depends on
-it.
+These need Node, with no packages to install. They do not replace a real-phone
+reconnect check.
+
+For a read-only delivery sample, keep the phone streaming in Safari and run this
+from Windows PowerShell:
+
+```powershell
+.\Tests\sample-frame-status.ps1
+```
+
+It reports roughly 20 seconds of delivery rate, local frame age and Iris process
+CPU. Only compare uninterrupted samples with `AllLive: True`. Frame age begins
+at C# receipt, not at phone capture; CPU excludes WebView2 and the camera driver.
+Do not open an extra viewer while sampling. See [measurement results](docs/BASELINES.md)
+for the comparison and its limits.
 
 ## The security warning is expected
 

@@ -104,31 +104,30 @@ namespace WindowsWebcamReceiver
         /// Publishes one frame. <paramref name="rgba"/> is raw RGBA as produced
         /// by the browser; it is converted to BGRA on the way in.
         /// </summary>
-        public void Publish(ReadOnlySpan<byte> rgba)
+        public unsafe void Publish(ReadOnlySpan<byte> rgba)
         {
             if (rgba.Length < slotSize) return;   // never publish a partial frame
 
             var target = 1 - activeSlot;          // the slot nobody is reading
             var offset = HeaderSize + target * slotSize;
 
-            // Fill the spare slot first, with no "busy" flag raised. Readers are
-            // looking at the other slot, so this is safe however long it takes -
-            // and it does take a while, since it is several megabytes per frame.
-            // The scratch buffer belongs to the thread, not to this instance, so a
-            // second buffer at a different size can inherit one that is too small.
-            // Checking the length rather than just "is it there?" is what stops
-            // that walking off the end of the array.
-            if (rentBuffer is null || rentBuffer.Length < slotSize)
-                rentBuffer = new byte[slotSize];
-            var buffer = rentBuffer;
-            for (var i = 0; i < slotSize; i += 4)
+            // Convert directly into the spare slot. WriteArray<byte> walked every
+            // byte through a generic accessor and exceeded a 30fps frame budget.
+            // AcquirePointer keeps the mapping alive until this write is finished.
+            byte* pointer = null;
+            view.SafeMemoryMappedViewHandle.AcquirePointer(ref pointer);
+            try
             {
-                buffer[i + 0] = rgba[i + 2]; // B
-                buffer[i + 1] = rgba[i + 1]; // G
-                buffer[i + 2] = rgba[i + 0]; // R
-                buffer[i + 3] = 255;         // A
+                var destination = new Span<byte>(pointer + view.PointerOffset + offset, slotSize);
+                for (var pixelOffset = 0; pixelOffset < slotSize; pixelOffset += 4)
+                {
+                    destination[pixelOffset] = rgba[pixelOffset + 2];
+                    destination[pixelOffset + 1] = rgba[pixelOffset + 1];
+                    destination[pixelOffset + 2] = rgba[pixelOffset];
+                    destination[pixelOffset + 3] = 255;
+                }
             }
-            view.WriteArray(offset, buffer, 0, slotSize);
+            finally { view.SafeMemoryMappedViewHandle.ReleasePointer(); }
 
             // Only the swap needs protecting. An odd counter means "changing
             // right now"; a reader that sees it simply waits and looks again.
@@ -147,8 +146,6 @@ namespace WindowsWebcamReceiver
             next = Interlocked.Increment(ref sequence);
             view.Write(OffSequence, next);      // even: readers may proceed
         }
-
-        [ThreadStatic] static byte[]? rentBuffer;
 
         public void Dispose()
         {

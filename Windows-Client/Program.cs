@@ -1,3 +1,5 @@
+// Hosts Iris signaling, web pages and raw-frame reception for the phone and Windows camera.
+// Complete frames are published before acknowledgment so the receiver can bound its queue.
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -412,7 +414,7 @@ namespace WindowsWebcamReceiver
         }
 
         /// <summary>
-        /// Reads raw RGBA frames off the websocket into the frame store.
+        /// Publishes raw RGBA frames from the websocket and acknowledges each complete frame.
         /// One frame can arrive as several websocket fragments, so we keep
         /// reading until the message ends before treating it as complete -
         /// storing a partial frame would show as a torn picture.
@@ -421,6 +423,7 @@ namespace WindowsWebcamReceiver
         {
             const int OutW = 1280, OutH = 720;
             var buffer = new byte[OutW * OutH * 4];
+            var frameReady = Encoding.UTF8.GetBytes("frame-ready");
             var reported = 0L;
 
             try
@@ -445,7 +448,20 @@ namespace WindowsWebcamReceiver
                         continue;
                     }
 
-                    frames.Write(buffer.AsSpan(0, total), OutW, OutH);
+                    // Only acknowledge whole frames. A malformed message must not
+                    // leave the browser waiting forever or publish leftover pixels.
+                    if (!result.EndOfMessage || total != buffer.Length)
+                    {
+                        await ws.CloseOutputAsync(WebSocketCloseStatus.InvalidPayloadData,
+                            "Expected one complete 1280x720 RGBA frame", CancellationToken.None);
+                        return;
+                    }
+
+                    // Publish while this receive buffer is still ours, without waiting
+                    // for another timer or cloning the frame for the publisher.
+                    publisher!.PublishFrame(buffer.AsSpan(0, total), OutW, OutH);
+                    await ws.SendAsync(new ArraySegment<byte>(frameReady),
+                        WebSocketMessageType.Text, true, CancellationToken.None);
 
                     // Log the first frame and then every 300 (~10s at 30fps),
                     // so the console shows life without becoming a firehose.

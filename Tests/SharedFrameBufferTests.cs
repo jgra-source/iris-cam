@@ -1,5 +1,6 @@
 using WindowsWebcamReceiver;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Iris.Tests;
 
@@ -14,9 +15,11 @@ namespace Iris.Tests;
 public sealed class SharedFrameBufferTests : IDisposable
 {
     readonly string path;
+    readonly ITestOutputHelper output;
 
-    public SharedFrameBufferTests()
+    public SharedFrameBufferTests(ITestOutputHelper output)
     {
+        this.output = output;
         path = Path.Combine(Path.GetTempPath(), "iris-tests",
             Guid.NewGuid().ToString("N") + ".bin");
     }
@@ -202,12 +205,8 @@ public sealed class SharedFrameBufferTests : IDisposable
     [Fact]
     public void ASecondBufferAtABiggerSizeStillWorks()
     {
-        // Publish keeps a scratch buffer per thread rather than per instance. It
-        // used to reuse whatever was already there without checking it was big
-        // enough, so a small buffer followed by a large one on the same thread
-        // crashed with an index error. Nothing in the app hits that today - there
-        // is one buffer at one fixed size - but it would fire the moment the
-        // resolution became adjustable.
+        // Guard the old per-thread scratch-buffer failure even though publishing
+        // now writes directly into each instance's own mapping.
         var second = path + ".2";
         try
         {
@@ -229,6 +228,36 @@ public sealed class SharedFrameBufferTests : IDisposable
     }
 
     // ---- the part that only shows up under load -----------------------------
+
+    [Fact]
+    public void Publish_AtCameraResolution_PreservesPixelsAndReportsCost()
+    {
+        // Measure the real camera size without touching the running camera file.
+        const int width = 1280, height = 720, frameCount = 120;
+        using var buffer = new SharedFrameBuffer(width, height, path);
+        var pixels = Frame(width, height, 42);
+        for (var warmup = 0; warmup < 10; warmup++) buffer.Publish(pixels);
+
+        var allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        for (var frameNumber = 0; frameNumber < frameCount; frameNumber++)
+            buffer.Publish(pixels);
+        clock.Stop();
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - allocatedBefore;
+        output.WriteLine($"720p publish: {clock.Elapsed.TotalMilliseconds / frameCount:F3} ms/frame; {allocated / frameCount} allocated bytes/frame");
+
+        // Timing is reported, not asserted: busy machines must not fail a correctness test.
+        using var reader = new SeqlockReader(path);
+        var received = new byte[pixels.Length];
+        Assert.True(reader.TryRead(received, width, height));
+        for (var pixelOffset = 0; pixelOffset < received.Length; pixelOffset += 4)
+        {
+            Assert.Equal((byte)42, received[pixelOffset]);
+            Assert.Equal((byte)42, received[pixelOffset + 1]);
+            Assert.Equal((byte)42, received[pixelOffset + 2]);
+            Assert.Equal((byte)255, received[pixelOffset + 3]);
+        }
+    }
 
     [Fact]
     public void AReaderNeverSeesHalfOfOneFrameAndHalfOfAnother()

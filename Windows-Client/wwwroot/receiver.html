@@ -30,6 +30,8 @@ lets a camera device keep working when the phone is rotated.</div>
 <video id="remote" autoplay playsinline muted></video>
 
 <script>
+// Feeds the Windows camera from decoded phone video. Two frames may be outstanding:
+// one being published and one travelling to C#, without an unbounded queue of old pictures.
 // The camera device will advertise this one size and never change it.
 const OUT_W = 1280, OUT_H = 720;
 const TARGET_FPS = 30;
@@ -42,6 +44,7 @@ const pill = document.getElementById('pill');
 const statsEl = document.getElementById('stats');
 
 let pc, sigWs, frameWs;
+let framesPending = 0;
 let sent = 0, bytes = 0, skipped = 0, tick = performance.now();
 let lastDraw = 0;
 let pumpToken = 0;
@@ -98,9 +101,16 @@ function setupPeer() {
 // --- frame channel to C# -----------------------------------------------------
 function connectFrames() {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  frameWs = new WebSocket(`${proto}//${location.host}/ws/frames`);
-  frameWs.binaryType = 'arraybuffer';
-  frameWs.onclose = () => setTimeout(connectFrames, 2000);
+  const socket = new WebSocket(`${proto}//${location.host}/ws/frames`);
+  frameWs = socket;
+  socket.binaryType = 'arraybuffer';
+  socket.onopen = () => { if (socket === frameWs) framesPending = 0; };
+  socket.onmessage = (event) => {
+    if (socket === frameWs && event.data === 'frame-ready') framesPending = Math.max(0, framesPending - 1);
+  };
+  socket.onclose = () => {
+    if (socket === frameWs) setTimeout(connectFrames, 2000);
+  };
 }
 
 // --- the actual work: letterbox into a fixed size, then ship the pixels -------
@@ -114,23 +124,22 @@ function connectFrames() {
 // forwarded them.
 function startPump() {
   const token = ++pumpToken;
+  const hasVideoCallbacks = 'requestVideoFrameCallback' in remote;
 
   const pump = () => {
     if (token !== pumpToken) return;   // a newer pump has taken over
+    // Arm the next decoded frame before readback blocks this callback. Otherwise
+    // a frame arriving during that work can be missed entirely.
+    if (hasVideoCallbacks) remote.requestVideoFrameCallback(pump);
+    else requestAnimationFrame(pump);
+
     const now = performance.now();
-    // Cap the rate. Sending faster than the camera needs just burns CPU and
-    // was what caused the throughput dips during measurement.
-    // Tolerance matters here. Frames arrive one per decoded video frame, so at
-    // 30fps they land ~33.3ms apart. Demanding a full 33.3ms gap rejects any
-    // frame that arrives a hair early, and the next one is then 66ms out - which
-    // silently halves the rate to ~16fps. Accepting slightly-early frames fixes it.
-    if (now - lastDraw >= (1000 / TARGET_FPS) * 0.8) {
+    // Video callbacks already identify new frames. A second wall-clock throttle
+    // rejects valid frames after scheduler jitter; cap only the animation fallback.
+    if (hasVideoCallbacks || now - lastDraw >= (1000 / TARGET_FPS) * 0.8) {
       lastDraw = now;
-      drawLetterboxed();
       pushFrame();
     }
-    if ('requestVideoFrameCallback' in remote) remote.requestVideoFrameCallback(pump);
-    else requestAnimationFrame(pump);
   };
   pump();
 }
@@ -153,12 +162,14 @@ function drawLetterboxed() {
 function pushFrame() {
   if (!frameWs || frameWs.readyState !== WebSocket.OPEN) return;
 
-  // If C# hasn't drained the socket, skip this frame rather than pile up
-  // latency. A late frame is worth less than a current one.
-  if (frameWs.bufferedAmount > 8 * 1024 * 1024) { skipped++; return; }
+  // bufferedAmount cannot see bytes already queued inside Windows. Two credits
+  // overlap transfer and publication; one credit halved delivery on the real PC.
+  if (framesPending >= 2) { skipped++; return; }
 
+  drawLetterboxed();
   const data = ctx.getImageData(0, 0, OUT_W, OUT_H).data;
   frameWs.send(data.buffer);
+  framesPending++;
   sent++; bytes += data.byteLength;
 
   const secs = (performance.now() - tick) / 1000;
