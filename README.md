@@ -77,8 +77,8 @@ menu, and clicking it copies it.
 Open that address **in Safari on your iPhone** and tap **Start Camera**.
 
 Safari will warn *"This Connection Is Not Private"*. **That is expected**, and
-[here is why](#the-security-warning-is-expected). Tap **Show Details** → **visit
-this website**.
+[here is why](#the-security-warning-and-how-to-handle-it). Tap **Show Details** → **visit
+this website** (or install the optional [1-time Trust Profile](#option-b-remove-warnings-permanently-one-time-iphone-trust-profile) to remove warnings permanently).
 
 ### 4. Pick it in your video app
 
