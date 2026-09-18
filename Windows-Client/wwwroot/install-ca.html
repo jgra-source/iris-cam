@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Iris - Certificate Setup</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #0a0a0c;
+            color: #f5f5f7;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            min-height: 100vh;
+            padding: 32px 20px 48px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            max-width: 480px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 8px;
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(48, 209, 88, 0.15);
+            color: #30d158;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 6px 14px;
+            border-radius: 20px;
+            margin-bottom: 14px;
+            border: 1px solid rgba(48, 209, 88, 0.3);
+        }
+        h1 {
+            font-size: 26px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+        }
+        p.subtitle {
+            color: #8e8e93;
+            font-size: 15px;
+            line-height: 1.4;
+        }
+        .action-card {
+            background: #1c1c1e;
+            border-radius: 18px;
+            padding: 22px 20px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        }
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            background: #0071e3;
+            color: #fff;
+            font-size: 17px;
+            font-weight: 600;
+            padding: 16px 20px;
+            border-radius: 14px;
+            text-decoration: none;
+            transition: background 0.15s ease, transform 0.1s ease;
+        }
+        .btn-primary:active {
+            background: #0077ed;
+            transform: scale(0.98);
+        }
+        .btn-secondary {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.08);
+            color: #f5f5f7;
+            font-size: 15px;
+            font-weight: 500;
+            padding: 14px 20px;
+            border-radius: 14px;
+            text-decoration: none;
+            margin-top: 10px;
+        }
+        .steps {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .step-card {
+            background: #161618;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 16px;
+            padding: 18px;
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+        }
+        .step-number {
+            background: #2c2c2e;
+            color: #0a84ff;
+            font-weight: 700;
+            font-size: 15px;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        .step-content {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .step-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #fff;
+        }
+        .step-desc {
+            font-size: 14px;
+            color: #8e8e93;
+            line-height: 1.45;
+        }
+        .step-desc strong {
+            color: #f5f5f7;
+        }
+        .footer-nav {
+            text-align: center;
+            margin-top: 12px;
+        }
+        .back-link {
+            color: #0a84ff;
+            text-decoration: none;
+            font-size: 15px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="badge">🔒 One-Time Setup</div>
+            <h1>Trust Iris on iPhone</h1>
+            <p class="subtitle">Install the local certificate profile once to permanently stop Safari security warnings.</p>
+        </div>
+
+        <div class="action-card">
+            <a href="/ca.mobileconfig" class="btn-primary" id="downloadBtn">
+                📥 Download Trust Profile
+            </a>
+            <a href="/ca.crt" class="btn-secondary">
+                📄 Download Certificate (.crt)
+            </a>
+        </div>
+
+        <div class="steps">
+            <div class="step-card">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <div class="step-title">Download the Profile</div>
+                    <div class="step-desc">Tap <strong>Download Trust Profile</strong> above and tap <strong>Allow</strong> when Safari asks permission.</div>
+                </div>
+            </div>
+
+            <div class="step-card">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <div class="step-title">Install in Settings</div>
+                    <div class="step-desc">Open iPhone <strong>Settings</strong> &rarr; Tap <strong>Profile Downloaded</strong> (near the top) &rarr; Tap <strong>Install</strong> in the top-right corner.</div>
+                </div>
+            </div>
+
+            <div class="step-card">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <div class="step-title">Enable Full Trust</div>
+                    <div class="step-desc">Go to <strong>Settings &rarr; General &rarr; About &rarr; Certificate Trust Settings</strong>. Turn ON trust for <strong>Iris Camera Local CA</strong>.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer-nav">
+            <a href="/" class="back-link">← Back to Camera</a>
+        </div>
+    </div>
+</body>
+</html>

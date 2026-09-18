@@ -16,6 +16,8 @@
            different shape, so what you see is what the other end receives. */
         video { width: 100%; height: 100%; object-fit: contain; position: absolute; background: #000; }
         .overlay { position: absolute; z-index: 2; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 50px 20px; }
+        .top-bar { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        .cert-link { font-size: 12px; color: rgba(255,255,255,0.7); text-decoration: none; background: rgba(255,255,255,0.12); padding: 4px 12px; border-radius: 12px; }
         #status { font-size: 14px; background: rgba(0,0,0,0.6); padding: 6px 16px; border-radius: 20px; text-align: center; }
         /* Tappable only while something is wrong, so a healthy stream cannot be
            knocked over by a stray tap. */
@@ -33,7 +35,10 @@
     <video id="hiddenSource" autoplay playsinline muted style="display:none"></video>
     <canvas id="rotateCanvas" style="display:none"></canvas>
     <div class="overlay">
-        <div id="status">Tap Start to begin</div>
+        <div class="top-bar">
+            <div id="status">Tap Start to begin</div>
+            <a href="/install-ca.html" id="certLink" class="cert-link">🔒 Remove Safari Warning</a>
+        </div>
         <div class="controls">
             <button id="startBtn">Start Camera</button>
             <button id="flipBtn" title="Switch camera">🔄</button>
@@ -51,6 +56,7 @@
         const rotateBtn = document.getElementById('rotateBtn');
         const stopBtn = document.getElementById('stopBtn');
         const statusEl = document.getElementById('status');
+        const certLink = document.getElementById('certLink');
         // rawStream = untouched camera output. outputStream = what's actually
         // previewed and sent (either rawStream directly, or a rotated re-draw of it).
         let rawStream, outputStream, pc, ws;
@@ -93,6 +99,7 @@
             try {
                 await acquireCamera();
                 startBtn.style.display = 'none';
+                if (certLink) certLink.style.display = 'none';
                 flipBtn.style.display = 'block';
                 rotateBtn.style.display = 'block';
                 stopBtn.style.display = 'block';
@@ -100,6 +107,7 @@
                 connect();
             } catch(e) {
                 running = false;
+                if (certLink) certLink.style.display = 'inline-block';
                 setStatus('Error: ' + e.message);
             }
         }
@@ -113,6 +121,7 @@
             if (pc) { pc.close(); pc = null; }
             if (ws) { ws.close(); ws = null; }
             startBtn.style.display = 'block';
+            if (certLink) certLink.style.display = 'inline-block';
             flipBtn.style.display = 'none';
             rotateBtn.style.display = 'none';
             stopBtn.style.display = 'none';

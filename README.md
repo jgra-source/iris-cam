@@ -206,25 +206,31 @@ at C# receipt, not at phone capture; CPU excludes WebView2 and the camera driver
 Do not open an extra viewer while sampling. See [measurement results](docs/BASELINES.md)
 for the comparison and its limits.
 
-## The security warning is expected
+## The security warning and how to handle it
 
 Both browsers will warn that the connection is not private, and Safari will say something like *"This Connection Is Not Private"*.
 
 **This is normal and it is not a sign that something is broken.**
 
-Browsers only allow camera access over an encrypted (`https`) connection. Encryption needs a certificate. Certificates that browsers trust automatically are issued for public domain names, and this program runs on your home network with no domain name — so it creates its own certificate instead. Browsers cannot verify a certificate that a program made for itself, so they warn you.
+Browsers only allow camera access over an encrypted (`https`) connection. Encryption needs a certificate. Certificates that browsers trust automatically are issued for public domain names, and this program runs on your home network with no domain name — so Iris generates a local Certificate Authority (Root CA) to sign its connections.
 
-The traffic is still encrypted, and it never leaves your local network.
+The traffic is encrypted and never leaves your local Wi-Fi. You have two easy options:
 
-To continue on iPhone:
-
-1. Tap **Show Details**
+### Option A: Quick Bypass (No setup needed)
+1. In Safari, tap **Show Details**
 2. Tap **visit this website**
 3. Tap **Visit** to confirm
 
-On Chrome or Edge on the PC: click **Advanced**, then **Proceed**.
+On PC (Chrome / Edge): click **Advanced**, then **Proceed**.
 
-You only need to do this once per device, unless the certificate is regenerated.
+### Option B: Remove Warnings Permanently (One-time iPhone Trust Profile)
+If you use Iris regularly and want Safari to open cleanly with zero security warnings:
+1. Open `https://<pc-ip>:9443/install-ca.html` on your iPhone (or tap **🔒 Remove Safari Warning** on the camera page)
+2. Tap **Download Trust Profile** and tap **Allow**
+3. Open iPhone **Settings** &rarr; tap **Profile Downloaded** (top) &rarr; tap **Install**
+4. Go to **Settings &rarr; General &rarr; About &rarr; Certificate Trust Settings**, and enable full trust for **Iris Camera Local CA**
+
+Safari will now trust Iris connections automatically with zero warnings.
 
 ## Controls on the phone
 

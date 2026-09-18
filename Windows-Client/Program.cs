@@ -25,7 +25,9 @@ namespace WindowsWebcamReceiver
     class Program
     {
         const int Port = 9443;
-        const string CertFileName = "iris.pfx";
+        const string ServerCertFileName = "iris.pfx";
+        const string CaCertFileName = "iris-ca.pfx";
+        static X509Certificate2? rootCaCert;
 
         // Simple signaling relay: one sender (iPhone), one viewer (PC browser)
         static WebSocket? senderSocket;
@@ -176,6 +178,29 @@ namespace WindowsWebcamReceiver
                     : Results.File(bmp, "image/bmp");
             });
 
+            // Apple Configuration Profile (.mobileconfig) for one-tap Root CA trust
+            app.MapGet("/ca.mobileconfig", () =>
+            {
+                if (rootCaCert == null) return Results.NotFound("Root CA certificate not available");
+                return Results.Bytes(
+                    GetMobileConfigBytes(rootCaCert),
+                    "application/x-apple-aspen-config",
+                    "iris-ca.mobileconfig");
+            });
+
+            // Raw Root CA Certificate (.crt) for manual installation
+            app.MapGet("/ca.crt", () =>
+            {
+                if (rootCaCert == null) return Results.NotFound("Root CA certificate not available");
+                return Results.Bytes(
+                    rootCaCert.Export(X509ContentType.Cert),
+                    "application/x-x509-ca-cert",
+                    "iris-ca.crt");
+            });
+
+            // Clean redirect for certificate setup guide
+            app.MapGet("/install-ca", (HttpContext ctx) => ctx.Response.Redirect("/install-ca.html"));
+
             publisher = new FramePublisher(frames, OutWidth, OutHeight);
             publisher.Start();
 
@@ -254,9 +279,13 @@ namespace WindowsWebcamReceiver
                 Console.WriteLine("  Run with --autostart to have it start when you sign in.");
                 Console.WriteLine();
             }
-            Console.WriteLine("  Safari will warn the connection is not private. This is");
-            Console.WriteLine("  expected - the certificate is self-signed. Tap");
-            Console.WriteLine("  'Show Details' then 'visit this website' to continue.");
+            Console.WriteLine("  Safari will warn the connection is not private. You can:");
+            Console.WriteLine("    1. Quick use: Tap 'Show Details' -> 'visit this website'.");
+            if (localIps.Count > 0)
+            {
+                Console.WriteLine("    2. Remove warnings permanently: Open this setup link on iPhone:");
+                Console.WriteLine($"       https://{localIps[0]}:{Port}/install-ca.html");
+            }
             Console.WriteLine("=========================================================");
             Console.WriteLine();
         }
@@ -303,58 +332,104 @@ namespace WindowsWebcamReceiver
         }
 
         /// <summary>
-        /// Loads a previously generated certificate, or creates one if it is missing,
-        /// expired, or no longer covers the machine's current IP addresses.
+        /// Loads a previously generated server certificate, or creates a new one signed
+        /// by the persistent local Iris Root CA.
         ///
         /// The IP addresses are written into the certificate's Subject Alternative Name.
-        /// Without that, Safari rejects the connection outright for the wrong reason
-        /// ("this certificate is not for this address") on top of the expected
-        /// self-signed warning, and there is no way to click past it.
         /// </summary>
         static X509Certificate2 GetOrCreateCertificate(List<IPAddress> localIps)
         {
-            // Deliberately NOT in the build output folder. That path changes with
-            // build configuration and target framework, and is wiped by a clean -
-            // each of which would silently regenerate the certificate and force
-            // every phone to accept the security warning all over again.
             var certDir = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "Iris");
             Directory.CreateDirectory(certDir);
-            var certPath = Path.Combine(certDir, CertFileName);
 
-            if (File.Exists(certPath))
+            // 1. Ensure Root CA exists and is loaded
+            rootCaCert = GetOrCreateCaCertificate(certDir);
+
+            // 2. Ensure Server Certificate signed by Root CA exists and covers all current IPs
+            var serverCertPath = Path.Combine(certDir, ServerCertFileName);
+
+            if (File.Exists(serverCertPath))
             {
                 try
                 {
                     var existing = new X509Certificate2(
-                        File.ReadAllBytes(certPath), (string?)null,
+                        File.ReadAllBytes(serverCertPath), (string?)null,
                         X509KeyStorageFlags.Exportable);
 
                     if (existing.NotAfter > DateTime.Now.AddDays(7) && CoversAll(existing, localIps))
                     {
-                        Console.WriteLine($"Using existing certificate ({certPath}).");
+                        Console.WriteLine($"Using existing server certificate ({serverCertPath}).");
                         return existing;
                     }
 
-                    Console.WriteLine("Existing certificate is expired or missing this machine's IP - regenerating.");
+                    Console.WriteLine("Existing server certificate is expired or missing this machine's IP - regenerating.");
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Could not load existing certificate ({ex.Message}) - regenerating.");
+                    Console.WriteLine($"Could not load existing server certificate ({ex.Message}) - regenerating.");
                 }
             }
 
-            var cert = CreateSelfSignedCertificate(localIps);
-            File.WriteAllBytes(certPath, cert.Export(X509ContentType.Pfx));
-            Console.WriteLine($"Generated new self-signed certificate ({certPath}).");
-            return cert;
+            var serverCert = CreateServerCertificate(rootCaCert, localIps);
+            File.WriteAllBytes(serverCertPath, serverCert.Export(X509ContentType.Pfx));
+            Console.WriteLine($"Generated new CA-signed server certificate ({serverCertPath}).");
+            return serverCert;
+        }
+
+        static X509Certificate2 GetOrCreateCaCertificate(string certDir)
+        {
+            var caPath = Path.Combine(certDir, CaCertFileName);
+            if (File.Exists(caPath))
+            {
+                try
+                {
+                    var existing = new X509Certificate2(
+                        File.ReadAllBytes(caPath), (string?)null,
+                        X509KeyStorageFlags.Exportable);
+
+                    if (existing.NotAfter > DateTime.Now.AddDays(30))
+                    {
+                        return existing;
+                    }
+                    Console.WriteLine("Existing Root CA certificate is expired - regenerating.");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Could not load existing Root CA ({ex.Message}) - regenerating.");
+                }
+            }
+
+            using var rsa = RSA.Create(2048);
+            var request = new CertificateRequest(
+                new X500DistinguishedName("CN=Iris Camera Local CA, O=Iris, OU=Webcam"),
+                rsa,
+                HashAlgorithmName.SHA256,
+                RSASignaturePadding.Pkcs1);
+
+            request.CertificateExtensions.Add(
+                new X509BasicConstraintsExtension(true, false, 0, true)); // IsCertificateAuthority = true, Critical = true
+            request.CertificateExtensions.Add(
+                new X509KeyUsageExtension(
+                    X509KeyUsageFlags.KeyCertSign | X509KeyUsageFlags.CrlSign,
+                    true)); // KeyCertSign, Critical = true
+
+            var caRaw = request.CreateSelfSigned(
+                DateTimeOffset.Now.AddDays(-1),
+                DateTimeOffset.Now.AddYears(10));
+
+            var caCert = new X509Certificate2(
+                caRaw.Export(X509ContentType.Pfx), (string?)null,
+                X509KeyStorageFlags.Exportable | X509KeyStorageFlags.PersistKeySet);
+
+            File.WriteAllBytes(caPath, caCert.Export(X509ContentType.Pfx));
+            Console.WriteLine($"Generated persistent Root CA certificate ({caPath}).");
+            return caCert;
         }
 
         static bool CoversAll(X509Certificate2 cert, List<IPAddress> ips)
         {
-            // SAN entries appear in the certificate's text dump; good enough for a
-            // "do we need to regenerate?" check without hand-parsing ASN.1.
             var san = cert.Extensions
                 .OfType<X509Extension>()
                 .FirstOrDefault(e => e.Oid?.Value == "2.5.29.17");
@@ -364,7 +439,7 @@ namespace WindowsWebcamReceiver
             return ips.All(ip => text.Contains(ip.ToString()));
         }
 
-        static X509Certificate2 CreateSelfSignedCertificate(List<IPAddress> localIps)
+        static X509Certificate2 CreateServerCertificate(X509Certificate2 caCert, List<IPAddress> localIps)
         {
             var sanBuilder = new SubjectAlternativeNameBuilder();
             sanBuilder.AddDnsName("localhost");
@@ -374,7 +449,7 @@ namespace WindowsWebcamReceiver
 
             using var rsa = RSA.Create(2048);
             var request = new CertificateRequest(
-                new X500DistinguishedName("CN=Iris Camera (self-signed)"),
+                new X500DistinguishedName("CN=Iris Camera Server"),
                 rsa,
                 HashAlgorithmName.SHA256,
                 RSASignaturePadding.Pkcs1);
@@ -387,18 +462,79 @@ namespace WindowsWebcamReceiver
                     false));
             request.CertificateExtensions.Add(
                 new X509EnhancedKeyUsageExtension(
-                    new OidCollection { new Oid("1.3.6.1.5.5.7.3.1") }, false)); // server auth
+                    new OidCollection { new Oid("1.3.6.1.5.5.7.3.1") }, false)); // Server Auth
             request.CertificateExtensions.Add(sanBuilder.Build());
 
-            var cert = request.CreateSelfSigned(
-                DateTimeOffset.Now.AddDays(-1),
-                DateTimeOffset.Now.AddYears(1));
+            byte[] serialNumber = new byte[16];
+            RandomNumberGenerator.Fill(serialNumber);
+            serialNumber[0] &= 0x7F; // Ensure positive integer for ASN.1 DER
 
-            // Round-tripping through PFX makes the private key usable by Kestrel on
-            // Windows; the key from CreateSelfSigned alone is not directly reusable.
+            var serverCertWithoutKey = request.Create(
+                caCert,
+                DateTimeOffset.Now.AddDays(-1),
+                DateTimeOffset.Now.AddDays(820), // Apple limit for TLS server certs
+                serialNumber);
+
+            var serverCertWithKey = serverCertWithoutKey.CopyWithPrivateKey(rsa);
+
             return new X509Certificate2(
-                cert.Export(X509ContentType.Pfx), (string?)null,
+                serverCertWithKey.Export(X509ContentType.Pfx), (string?)null,
                 X509KeyStorageFlags.Exportable);
+        }
+
+        static byte[] GetMobileConfigBytes(X509Certificate2 caCert)
+        {
+            var certBytes = caCert.Export(X509ContentType.Cert);
+            var certBase64 = Convert.ToBase64String(certBytes, Base64FormattingOptions.InsertLineBreaks);
+            var payloadUuid = Guid.NewGuid().ToString().ToUpperInvariant();
+            var profileUuid = Guid.NewGuid().ToString().ToUpperInvariant();
+
+            var xml = $@"<?xml version=""1.0"" encoding=""UTF-8""?>
+<!DOCTYPE plist PUBLIC ""-//Apple//DTD PLIST 1.0//EN"" ""http://www.apple.com/DTDs/PropertyList-1.0.dtd"">
+<plist version=""1.0"">
+<dict>
+    <key>PayloadContent</key>
+    <array>
+        <dict>
+            <key>PayloadCertificateFileName</key>
+            <string>IrisCameraLocalCA.cer</string>
+            <key>PayloadContent</key>
+            <data>
+{certBase64}
+            </data>
+            <key>PayloadDescription</key>
+            <string>Installs the Iris Camera Root Certificate Authority to allow warning-free local HTTPS access.</string>
+            <key>PayloadDisplayName</key>
+            <string>Iris Camera Root CA</string>
+            <key>PayloadIdentifier</key>
+            <string>com.iris.camera.rootca</string>
+            <key>PayloadType</key>
+            <string>com.apple.security.root</string>
+            <key>PayloadUUID</key>
+            <string>{payloadUuid}</string>
+            <key>PayloadVersion</key>
+            <integer>1</integer>
+        </dict>
+    </array>
+    <key>PayloadDescription</key>
+    <string>Configures trust for Iris Camera local HTTPS connections</string>
+    <key>PayloadDisplayName</key>
+    <string>Iris Camera Trust Profile</string>
+    <key>PayloadIdentifier</key>
+    <string>com.iris.camera.profile</string>
+    <key>PayloadOrganization</key>
+    <string>Iris Camera</string>
+    <key>PayloadRemovalDisallowed</key>
+    <false/>
+    <key>PayloadType</key>
+    <string>Configuration</string>
+    <key>PayloadUUID</key>
+    <string>{profileUuid}</string>
+    <key>PayloadVersion</key>
+    <integer>1</integer>
+</dict>
+</plist>";
+            return Encoding.UTF8.GetBytes(xml);
         }
 
         static async Task SendJson(WebSocket ws, string json)

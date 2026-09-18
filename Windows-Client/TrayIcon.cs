@@ -62,6 +62,14 @@ namespace WindowsWebcamReceiver
                     menu.Items.Add(item);
                 }
 
+                if (phoneUrls.Length > 0)
+                {
+                    var setupUrl = $"{phoneUrls[0]}/install-ca.html";
+                    var setupItem = new ToolStripMenuItem("Copy iPhone certificate setup link");
+                    setupItem.Click += (_, _) => TrySetClipboard(setupUrl);
+                    menu.Items.Add(setupItem);
+                }
+
                 var openViewer = new ToolStripMenuItem("Watch on this PC");
                 openViewer.Click += (_, _) => OpenInBrowser(viewerUrl);
                 menu.Items.Add(openViewer);
