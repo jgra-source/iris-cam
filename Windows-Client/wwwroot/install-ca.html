@@ -198,5 +198,10 @@
             <a href="/" class="back-link">← Back to Camera</a>
         </div>
     </div>
+    <script>
+        document.getElementById('downloadBtn').onclick = () => {
+            localStorage.setItem('iris_hide_cert_banner', '1');
+        };
+    </script>
 </body>
 </html>
