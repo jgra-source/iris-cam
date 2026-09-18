@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Iris - Product One-Pager</title>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 12mm 14mm 12mm 14mm;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: #1d1d1f;
+            background: #ffffff;
+            line-height: 1.35;
+            font-size: 13px;
+        }
+        .header {
+            border-bottom: 2px solid #0071e3;
+            padding-bottom: 12px;
+            margin-bottom: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        .title-group h1 {
+            font-size: 26px;
+            font-weight: 800;
+            color: #0071e3;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .title-group p {
+            font-size: 13px;
+            color: #515154;
+            margin-top: 3px;
+            font-weight: 500;
+        }
+        .badge {
+            background: #e8f2ff;
+            color: #0071e3;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 12px;
+            border: 1px solid #cce2ff;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+        .card {
+            background: #fbfbfd;
+            border: 1px solid #e5e5ea;
+            border-radius: 8px;
+            padding: 10px 12px;
+        }
+        .card h2 {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .card-problem h2 { color: #d70015; }
+        .card-solution h2 { color: #0071e3; }
+        .card ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        .card ul li {
+            position: relative;
+            padding-left: 14px;
+            margin-bottom: 4px;
+            font-size: 12px;
+            color: #333336;
+        }
+        .card-problem ul li::before {
+            content: "✕";
+            position: absolute;
+            left: 0;
+            color: #d70015;
+            font-weight: bold;
+            font-size: 11px;
+        }
+        .card-solution ul li::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #30d158;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .section-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #1d1d1f;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-left: 3px solid #0071e3;
+            padding-left: 6px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 14px;
+            font-size: 12px;
+        }
+        th, td {
+            text-align: left;
+            padding: 6px 10px;
+            border: 1px solid #e5e5ea;
+        }
+        th {
+            background: #f5f5f7;
+            color: #1d1d1f;
+            font-weight: 700;
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+        td.feature-name {
+            font-weight: 600;
+            color: #0071e3;
+            width: 28%;
+        }
+        .workflow {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+        .step {
+            background: #f5f5f7;
+            border-radius: 8px;
+            padding: 10px;
+            border: 1px solid #e5e5ea;
+            text-align: center;
+        }
+        .step-num {
+            display: inline-block;
+            width: 22px;
+            height: 22px;
+            background: #0071e3;
+            color: #fff;
+            border-radius: 50%;
+            font-weight: 700;
+            font-size: 12px;
+            line-height: 22px;
+            margin-bottom: 6px;
+        }
+        .step-title {
+            font-weight: 700;
+            font-size: 12px;
+            margin-bottom: 3px;
+        }
+        .step-desc {
+            font-size: 11px;
+            color: #6e6e73;
+        }
+        .footer {
+            border-top: 1px solid #e5e5ea;
+            padding-top: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            color: #86868b;
+        }
+        .footer a {
+            color: #0071e3;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .pill-group {
+            display: flex;
+            gap: 6px;
+        }
+        .pill {
+            background: #f5f5f7;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 600;
+            color: #515154;
+            border: 1px solid #e5e5ea;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="title-group">
+            <h1>📷 Iris Webcam</h1>
+            <p>Your iPhone as a High-Quality Windows Webcam — 100% in Safari</p>
+        </div>
+        <div class="badge">Open Source • MIT</div>
+    </div>
+
+    <div class="grid-2">
+        <div class="card card-problem">
+            <h2>The Challenge</h2>
+            <ul>
+                <li>Laptop webcams have poor low-light quality & low dynamic range.</li>
+                <li>Commercial apps demand App Store installs, accounts & paid tiers.</li>
+                <li>Cloud-relayed streams add 50–150ms latency and risk privacy.</li>
+            </ul>
+        </div>
+        <div class="card card-solution">
+            <h2>The Iris Solution</h2>
+            <ul>
+                <li><strong>Zero iPhone Installs:</strong> Runs directly inside native iOS Safari.</li>
+                <li><strong>Zero Cloud Latency:</strong> 100% peer-to-peer over local home Wi-Fi.</li>
+                <li><strong>Native Driver:</strong> Directly recognized in Zoom, Teams, Meet & OBS.</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="section-title">Technical Architecture & Features</div>
+    <table>
+        <thead>
+            <tr>
+                <th>Component</th>
+                <th>Implementation</th>
+                <th>Advantage</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="feature-name">Web Client</td>
+                <td>Vanilla WebRTC / WebKit in Safari</td>
+                <td>No App Store download; works on any modern iPhone.</td>
+            </tr>
+            <tr>
+                <td class="feature-name">Local PKI & Trust</td>
+                <td>On-device Root CA + <code>.mobileconfig</code></td>
+                <td>100% offline, warning-free local HTTPS camera permissions.</td>
+            </tr>
+            <tr>
+                <td class="feature-name">Virtual Camera</td>
+                <td>C++ Windows Media Foundation Driver</td>
+                <td>Presents as a real hardware camera to Windows video apps.</td>
+            </tr>
+            <tr>
+                <td class="feature-name">Host Runtime</td>
+                <td>Single-File .NET 8 Executable</td>
+                <td>Portable, self-contained single <code>.exe</code>; runs from system tray.</td>
+            </tr>
+            <tr>
+                <td class="feature-name">Local Transport</td>
+                <td>Direct Wi-Fi WebSockets / WebRTC</td>
+                <td>Sub-30ms real-time response with zero cloud hops.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="section-title">How It Works (3 Steps)</div>
+    <div class="workflow">
+        <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-title">Run Iris on PC</div>
+            <div class="step-desc">Double-click <code>Iris.exe</code>. It sits quietly in the notification tray.</div>
+        </div>
+        <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-title">Open on iPhone</div>
+            <div class="step-desc">Open the local address in Safari and tap <strong>Start Camera</strong>.</div>
+        </div>
+        <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-title">Join Your Call</div>
+            <div class="step-desc">Select <strong>Iris Camera</strong> in Zoom, Teams, Meet or Discord.</div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <div class="pill-group">
+            <span class="pill">C# .NET 8</span>
+            <span class="pill">C++ 17</span>
+            <span class="pill">WebRTC</span>
+            <span class="pill">WinForms / Tray</span>
+            <span class="pill">Windows Media Foundation</span>
+        </div>
+        <div>
+            Repository: <a href="https://github.com/jgra-source/iris-cam">github.com/jgra-source/iris-cam</a>
+        </div>
+    </div>
+</body>
+</html>
