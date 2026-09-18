@@ -136,8 +136,15 @@ tap, like an app.
 Tapping that icon now goes straight to the camera page. Tap **Start Camera** and
 you are streaming.
 
-It still opens in Safari, and that is on purpose: the certificate notice and the
-camera permission both need Safari to work properly.
+## Stop the repeated "Would like to access the camera" prompt
+
+By default, Safari asks permission every time a page starts the camera. You can set it to **Always Allow** in 2 taps:
+
+1. In Safari, tap the **`aA`** icon on the left side of the address bar.
+2. Tap **Website Settings**.
+3. Under **Camera**, change from **Ask** to **Allow**, then tap **Done**.
+
+Safari will now start the camera instantly every time with **zero permission popups**.
 
 **One thing to know.** The shortcut remembers your PC's address on your network.
 That address usually stays the same for weeks, but it can change when your router
